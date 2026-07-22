@@ -85,7 +85,7 @@ export function initRentApp(root: HTMLElement, questions: Question[], options: I
   const renderExplanation = (question: Question, action = 'toggle-explanation', open = explanationOpen) => question.law_reference ? `${button(action, open ? '收合詳解' : '查看詳解')} ${open ? `<aside class="explanation">${escapeHtml(question.law_reference)}</aside>` : ''}` : ''
   const chapterOptions = () => `<option value="">請選擇章節</option>${[...new Map(questions.map((q) => [q.chapter_no, q.chapter_title])).entries()].map(([number, title]) => `<option value="${number}" ${String(number) === chapterNo ? 'selected' : ''}>第 ${number} 章・${escapeHtml(title)}</option>`).join('')}`
   const renderChapterSelect = () => {
-    root.innerHTML = `${renderHeader()}<main class="single-column"><section class="card"><p class="eyebrow">Chapter Practice</p><h1>章節練習</h1><label>選擇章節<select data-action="chapter-select">${chapterOptions()}</select></label>${button('start-chapter-practice', '開始章節練習', chapterNo ? '' : 'disabled')}</section></main>`
+    root.innerHTML = `${renderHeader()}<main class="single-column"><section class="card"><p class="eyebrow">Chapter Practice</p><h1>章節練習</h1><label>選擇章節<select data-action="chapter-select">${chapterOptions()}</select></label></section></main>`
     bind()
   }
   const renderMockStart = () => {
@@ -100,7 +100,7 @@ export function initRentApp(root: HTMLElement, questions: Question[], options: I
       return
     }
     const controls = initialView === 'chapter'
-      ? `<h2>章節設定</h2><label>選擇章節<select data-action="chapter-select">${chapterOptions()}</select></label>${button('start-chapter-practice', '重新開始章節練習', chapterNo ? '' : 'disabled')} <a class="button" href="${escapeHtml(routes.wrong)}">錯題回顧</a>`
+      ? `<h2>章節設定</h2><label>選擇章節<select data-action="chapter-select">${chapterOptions()}</select></label>`
       : `<h2>練習設定</h2>${button('start-all-practice', '重新隨機排序')} <a class="button" href="${escapeHtml(routes.wrong)}">錯題回顧</a>`
     root.innerHTML = `${renderHeader()}<main class="app-shell"><aside class="control-panel">${controls}</aside><section class="card question-card" data-question-key="${questionKey(current)}"><p class="eyebrow">${escapeHtml(practiceLabel)}・第 ${practiceIndex + 1} / ${practiceQuestions.length} 題</p><h1>${escapeHtml(current.question)}</h1>${renderOptions(current, selectedAnswer, checked)}${checked ? `<p class="feedback ${selectedAnswer === current.answer ? 'success' : 'error'}">${selectedAnswer === current.answer ? '答對了！' : '答錯了。'} 正確答案：${escapeHtml(current.answer)}</p>${renderExplanation(current)}${button('next-practice', practiceIndex + 1 < practiceQuestions.length ? '下一題' : '完成本輪')}</p>` : button('check-practice', '檢查答案', selectedAnswer ? '' : 'disabled')}</section></main>`
     bind()
@@ -149,7 +149,18 @@ export function initRentApp(root: HTMLElement, questions: Question[], options: I
       const checkButton = root.querySelector<HTMLButtonElement>('[data-action="check-practice"]')
       if (checkButton) checkButton.disabled = false
     }))
-    root.querySelector<HTMLSelectElement>('[data-action="chapter-select"]')?.addEventListener('change', (event) => { chapterNo = (event.target as HTMLSelectElement).value; render() })
+    root.querySelector<HTMLSelectElement>('[data-action="chapter-select"]')?.addEventListener('change', (event) => {
+      chapterNo = (event.target as HTMLSelectElement).value
+      if (!chapterNo) { mode = 'chapter-select'; render(); return }
+      mode = 'practice'
+      practiceLabel = `第 ${chapterNo} 章隨機練習`
+      practiceQuestions = selectQuestions(questions, { chapterNo: Number(chapterNo), count: questions.length })
+      practiceIndex = 0
+      selectedAnswer = undefined
+      checked = false
+      explanationOpen = false
+      render()
+    })
     root.querySelectorAll<HTMLButtonElement>('[data-exam-index]').forEach((element) => element.addEventListener('click', () => {
       examIndex = Number(element.dataset.examIndex)
       confirmingSubmit = false
@@ -165,7 +176,7 @@ export function initRentApp(root: HTMLElement, questions: Question[], options: I
         return
       }
       if (action === 'start-all-practice') { stopTimer(); mode = 'practice'; practiceLabel = '全題庫隨機練習'; practiceQuestions = selectQuestions(questions, { count: questions.length }); practiceIndex = 0; selectedAnswer = undefined; checked = false; explanationOpen = false; render() }
-      if (action === 'start-chapter-practice' && chapterNo) { mode = 'practice'; practiceLabel = `第 ${chapterNo} 章隨機練習`; practiceQuestions = selectQuestions(questions, { chapterNo: Number(chapterNo), count: questions.length }); practiceIndex = 0; selectedAnswer = undefined; checked = false; explanationOpen = false; render() }
+
       if (action === 'check-practice' && selectedAnswer) { checked = true; savePractice(); render() }
       if (action === 'next-practice' && checked) { practiceIndex += 1; selectedAnswer = undefined; checked = false; explanationOpen = false; render() }
       if (action === 'toggle-explanation') { explanationOpen = !explanationOpen; render() }

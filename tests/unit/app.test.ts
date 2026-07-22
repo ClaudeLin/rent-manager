@@ -80,17 +80,22 @@ describe('租賃題庫操作介面', () => {
     expect(JSON.parse(localStorage.getItem('rent-exam-history-v1')!).wrongKeys).toContain('c1-s1-q1')
   })
 
-  it('可選章節開始隨機練習，並在下一題後避免同輪重複', () => {
+  it('章節選單 onchange 立即載入新章題目，且不顯示重複操作與錯題回顧按鈕', () => {
     mount([question(1, 1), question(1, 2), question(2, 1)], 'chapter')
-    const select = document.querySelector<HTMLSelectElement>('[data-action="chapter-select"]')!
+    let select = document.querySelector<HTMLSelectElement>('[data-action="chapter-select"]')!
     select.value = '1'
     select.dispatchEvent(new Event('change', { bubbles: true }))
-    document.querySelector<HTMLButtonElement>('[data-action="start-chapter-practice"]')!.click()
-    const first = document.querySelector('[data-question-key]')!.getAttribute('data-question-key')
-    document.querySelector<HTMLButtonElement>('[data-option="A"]')!.click()
-    document.querySelector<HTMLButtonElement>('[data-action="check-practice"]')!.click()
-    document.querySelector<HTMLButtonElement>('[data-action="next-practice"]')!.click()
-    expect(document.querySelector('[data-question-key]')!.getAttribute('data-question-key')).not.toBe(first)
+
+    expect(document.querySelector('[data-question-key]')!.getAttribute('data-question-key')).toMatch(/^c1-/)
+    expect(document.querySelector('[data-action="start-chapter-practice"]')).toBeNull()
+    expect(document.querySelector('.control-panel a[href="/wrong/"]')).toBeNull()
+
+    select = document.querySelector<HTMLSelectElement>('[data-action="chapter-select"]')!
+    select.value = '2'
+    select.dispatchEvent(new Event('change', { bubbles: true }))
+
+    expect(document.querySelector('[data-question-key]')!.getAttribute('data-question-key')).toBe('c2-s1-q1')
+    expect(document.body.textContent).toContain('第 2 章隨機練習')
   })
 
   it('模擬考鎖定百題、可切題並於交卷後顯示章節統計與收合詳解', () => {

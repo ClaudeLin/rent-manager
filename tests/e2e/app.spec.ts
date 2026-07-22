@@ -59,9 +59,13 @@ test('章節練習使用獨立路由並在選章後顯示該章題目', async ({
   await expect(page).toHaveURL(chapterPath)
   await expect(page.getByRole('heading', { name: '章節練習' })).toBeVisible()
   await page.locator('[data-action="chapter-select"]').selectOption('1')
-  await page.getByRole('button', { name: '開始章節練習' }).click()
   await expect(page.getByText('第 1 章隨機練習').first()).toBeVisible()
   await expect(page.locator('[data-question-key]')).toBeVisible()
+  await expect(page.locator('[data-action="start-chapter-practice"]')).toHaveCount(0)
+  await expect(page.locator('.control-panel').getByRole('link', { name: '錯題回顧' })).toHaveCount(0)
+
+  await page.locator('[data-action="chapter-select"]').selectOption('2')
+  await expect(page.getByText('第 2 章隨機練習').first()).toBeVisible()
 })
 
 test('模擬考使用獨立路由且交卷後可返回練習首頁', async ({ page }) => {
@@ -197,7 +201,6 @@ test.describe('選擇有詳解題庫後的練習功能', () => {
     await page.getByRole('link', { name: '章節練習' }).click()
     await expect(page).toHaveURL(chapterPath)
     await page.locator('[data-action="chapter-select"]').selectOption('1')
-    await page.locator('[data-action="start-chapter-practice"]').click()
 
     await expect(page.getByText('第 1 章隨機練習').first()).toBeVisible()
     await expect(page.locator('[data-question-key]')).toBeVisible()
