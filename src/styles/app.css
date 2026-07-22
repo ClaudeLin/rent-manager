@@ -46,6 +46,7 @@ select { width: 100%; max-width: 100%; min-height: 44px; border: 1px solid #a8b8
 .option.is-selected { border-color: #1769aa; background: #edf6fc; }
 .option.is-correct { border-color: #208052; background: #edfaf2; }
 .option.is-wrong { border-color: #b74444; background: #fff1ef; }
+.action-group { display: flex; flex-wrap: wrap; align-items: center; gap: .65rem; margin-top: 1rem; }
 .feedback { margin: 1rem 0 .7rem; padding: .75rem; border-radius: 8px; font-weight: 800; }
 .feedback.success { color: #17643d; background: #e8f7ee; }
 .feedback.error { color: #963838; background: #fff0ed; }
@@ -56,6 +57,8 @@ select { width: 100%; max-width: 100%; min-height: 44px; border: 1px solid #a8b8
 .exam-map button { color: #32506b; background: #e6edf2; font-size: .75rem; }
 .exam-map button.answered { color: #fff; background: #1769aa; }
 .confirm { margin-top: .8rem; padding-top: .8rem; border-top: 1px solid #d8c7b0; color: #7b3b20; }
+.confirm p { margin: 0; }
+.confirm .action-group { margin-top: .75rem; }
 .score { color: #143b63; font-size: 1.45rem; font-weight: 900; }
 .results ul { padding-left: 1.2rem; }
 .result-item { padding: 1rem 0; border-top: 1px solid #e1d8ca; }
