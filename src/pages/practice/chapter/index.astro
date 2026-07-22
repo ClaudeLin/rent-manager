@@ -1,0 +1,19 @@
+---
+import '../../../styles/app.css'
+---
+<!doctype html>
+<html lang="zh-Hant-TW">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#143b63" />
+    <title>章節練習｜租賃住宅管理人員題庫</title>
+  </head>
+  <body>
+    <main id="app" aria-live="polite"></main>
+    <script>
+      import { bootstrapExamPage } from '../../../lib/bootstrap'
+      bootstrapExamPage(document.querySelector<HTMLElement>('#app')!, 'chapter')
+    </script>
+  </body>
+</html>

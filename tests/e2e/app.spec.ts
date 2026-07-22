@@ -1,9 +1,104 @@
 import { expect, test } from '@playwright/test'
 
-const configuredPath = process.env.PUBLIC_APP_PATH || '/practice'
-const appPath = `/${configuredPath.split('/').filter(Boolean).join('/')}/`
+const configuredPath = process.env.PUBLIC_APP_PATH || ''
+const pathSegments = configuredPath.split('/').filter(Boolean)
+const appPath = pathSegments.length ? `/${pathSegments.join('/')}/` : '/'
+const basePath = appPath === '/' ? '' : appPath.replace(/\/$/, '')
 const withLawUrl = `${appPath}data/questions_with_law.json`
 const withoutLawUrl = `${appPath}data/questions_without_law.json`
+const homePath = appPath
+const practicePath = `${basePath}/practice/`
+const chapterPath = `${basePath}/practice/chapter/`
+const mockPath = `${basePath}/mock/`
+const wrongPath = `${basePath}/wrong/`
+
+async function openPrimaryNavigation(page: import('@playwright/test').Page): Promise<void> {
+  const menu = page.getByRole('button', { name: '選單' })
+  if (await menu.isVisible()) {
+    await expect(page.getByRole('navigation', { name: '主要導覽' })).toBeHidden()
+    await menu.click()
+    await expect(menu).toHaveAttribute('aria-expanded', 'true')
+    await expect(page.getByRole('navigation', { name: '主要導覽' })).toBeVisible()
+  }
+}
+
+async function selectBankAtEntry(page: import('@playwright/test').Page, label = '有詳解題庫'): Promise<void> {
+  await page.goto(homePath)
+  await page.getByRole('button', { name: label }).click()
+  await expect(page).toHaveURL(practicePath)
+  await expect(page.locator('[data-question-key]')).toBeVisible()
+}
+
+test('入口選擇題庫後進入全題練習，Header 可返回入口重新選擇', async ({ page }) => {
+  await page.goto(homePath)
+  await expect(page.getByRole('heading', { name: '選擇題庫' })).toBeVisible()
+  await page.getByRole('button', { name: '有詳解題庫' }).click()
+
+  await expect(page).toHaveURL(practicePath)
+  await expect(page.getByRole('link', { name: '返回入口' })).toHaveAttribute('href', homePath)
+  await openPrimaryNavigation(page)
+  await expect(page.getByRole('link', { name: '更換題庫' })).toHaveAttribute('href', homePath)
+  await expect(page.locator('.brand small')).toContainText('目前：有詳解題庫')
+
+  await page.reload()
+  await expect(page).toHaveURL(practicePath)
+  await expect(page.locator('.brand small')).toContainText('目前：有詳解題庫')
+  await expect(page.locator('[data-question-key]')).toBeVisible()
+
+  await openPrimaryNavigation(page)
+  await page.getByRole('link', { name: '更換題庫' }).click()
+  await expect(page).toHaveURL(homePath)
+  await expect(page.getByRole('heading', { name: '選擇題庫' })).toBeVisible()
+})
+
+test('章節練習使用獨立路由並在選章後顯示該章題目', async ({ page }) => {
+  await selectBankAtEntry(page)
+  await openPrimaryNavigation(page)
+  await page.getByRole('link', { name: '章節練習' }).click()
+
+  await expect(page).toHaveURL(chapterPath)
+  await expect(page.getByRole('heading', { name: '章節練習' })).toBeVisible()
+  await page.locator('[data-action="chapter-select"]').selectOption('1')
+  await page.getByRole('button', { name: '開始章節練習' }).click()
+  await expect(page.getByText('第 1 章隨機練習').first()).toBeVisible()
+  await expect(page.locator('[data-question-key]')).toBeVisible()
+})
+
+test('模擬考使用獨立路由且交卷後可返回練習首頁', async ({ page }) => {
+  await selectBankAtEntry(page)
+  await openPrimaryNavigation(page)
+  await page.getByRole('link', { name: '模擬考' }).click()
+
+  await expect(page).toHaveURL(mockPath)
+  await expect(page.getByRole('heading', { name: '120 分鐘模擬考' })).toBeVisible()
+  await page.getByRole('button', { name: '開始模擬考' }).click()
+  await expect(page.getByText('第 1 / 100 題')).toBeVisible()
+  await page.getByRole('button', { name: '交卷' }).click()
+  await page.getByRole('button', { name: '確認交卷' }).click()
+  await expect(page.getByRole('heading', { name: '模擬考成績' })).toBeVisible()
+
+  await page.getByRole('link', { name: '返回練習首頁' }).click()
+  await expect(page).toHaveURL(practicePath)
+  await expect(page.locator('[data-question-key]')).toBeVisible()
+})
+
+test('錯題回顧使用獨立路由並可啟動錯題練習', async ({ page }) => {
+  await selectBankAtEntry(page)
+  await page.evaluate(() => localStorage.setItem('rent-exam-history-v1', JSON.stringify({
+    answered: 3,
+    correct: 2,
+    wrongKeys: ['c1-s1-q1'],
+  })))
+  await openPrimaryNavigation(page)
+  await page.getByRole('navigation', { name: '主要導覽' }).getByRole('link', { name: '錯題回顧' }).click()
+
+  await expect(page).toHaveURL(wrongPath)
+  await expect(page.getByRole('heading', { name: '錯題回顧' })).toBeVisible()
+  await expect(page.getByText('錯題數：1')).toBeVisible()
+  await page.getByRole('button', { name: '只練錯題' }).click()
+  await expect(page.getByText('錯題練習').first()).toBeVisible()
+  await expect(page.locator('[data-question-key]')).toBeVisible()
+})
 
 async function chooseQuestionBank(page: import('@playwright/test').Page, label: string, expectedUrl: string): Promise<void> {
   const bankRequests: string[] = []
@@ -11,7 +106,7 @@ async function chooseQuestionBank(page: import('@playwright/test').Page, label: 
     if (request.url().includes('/data/questions_')) bankRequests.push(new URL(request.url()).pathname)
   })
   await page.getByRole('button', { name: label }).click()
-  await expect(page.getByText('Practice • Mock Exam • Review')).toBeVisible()
+  await expect(page.getByRole('link', { name: '返回入口' })).toBeVisible()
   await expect(page.locator('[data-question-key]')).toBeVisible()
   await expect.poll(() => bankRequests).toEqual([expectedUrl])
 }
@@ -32,8 +127,8 @@ test('首次進入先選擇題庫，不會自動載入 JSON', async ({ page }) =
   expect(bankRequests).toEqual([])
 })
 
-test('根路徑維持 404，頁面資源皆由設定的深層路徑載入', async ({ page, request }) => {
-  expect((await request.get('/')).status()).toBe(404)
+test('本機根路徑或部署 Base 行為正確，頁面資源皆由目前 Base 載入', async ({ page, request }) => {
+  expect((await request.get('/')).status()).toBe(appPath === '/' ? 200 : 404)
   await page.goto(appPath)
 
   const resourcePaths = await page.evaluate(() => performance.getEntriesByType('resource').map((entry) => new URL(entry.name).pathname))
@@ -52,6 +147,7 @@ test('題庫載入失敗後可回到選擇畫面', async ({ page }) => {
   await page.getByRole('button', { name: '有詳解題庫' }).click()
 
   await expect(page.getByRole('alert')).toContainText('有詳解題庫目前無法載入')
+  await page.getByRole('link', { name: '返回入口' }).click()
   await expect(page.getByRole('heading', { name: '選擇題庫' })).toBeVisible()
   await expect(page.getByRole('button', { name: '只有答案題庫' })).toBeVisible()
 })
@@ -97,6 +193,9 @@ test.describe('選擇有詳解題庫後的練習功能', () => {
   })
 
   test('可選擇章節開始該章隨機練習', async ({ page }) => {
+    await openPrimaryNavigation(page)
+    await page.getByRole('link', { name: '章節練習' }).click()
+    await expect(page).toHaveURL(chapterPath)
     await page.locator('[data-action="chapter-select"]').selectOption('1')
     await page.locator('[data-action="start-chapter-practice"]').click()
 
@@ -105,7 +204,10 @@ test.describe('選擇有詳解題庫後的練習功能', () => {
   })
 
   test('模擬考建立固定一百題並提示未答後交卷', async ({ page }) => {
-    await page.locator('[data-action="start-mock"]').click()
+    await openPrimaryNavigation(page)
+    await page.getByRole('link', { name: '模擬考' }).click()
+    await expect(page).toHaveURL(mockPath)
+    await page.getByRole('button', { name: '開始模擬考' }).click()
 
     await expect(page.getByText('第 1 / 100 題')).toBeVisible()
     await expect(page.locator('[data-exam-index]')).toHaveCount(100)

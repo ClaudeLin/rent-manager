@@ -25,9 +25,9 @@ const examQuestions = Array.from({ length: 10 }, (_, chapter) =>
   Array.from({ length: 10 }, (_, index) => question(chapter + 1, index + 1)),
 ).flat()
 
-function mount(questions: Question[] = oneQuestion) {
+function mount(questions: Question[] = oneQuestion, initialView: 'practice' | 'chapter' | 'mock' | 'wrong' = 'practice') {
   document.body.innerHTML = '<main id="app"></main>'
-  initRentApp(document.querySelector<HTMLElement>('#app')!, questions)
+  initRentApp(document.querySelector<HTMLElement>('#app')!, questions, { initialView })
 }
 
 afterEach(() => {
@@ -37,6 +37,22 @@ afterEach(() => {
 })
 
 describe('租賃題庫操作介面', () => {
+  it('手機選單按鈕可切換導覽與 aria-expanded 狀態', () => {
+    mount()
+    const menu = document.querySelector<HTMLButtonElement>('[data-action="toggle-mobile-menu"]')!
+    const navigation = document.querySelector<HTMLElement>('#primary-nav')!
+    expect(menu.getAttribute('aria-expanded')).toBe('false')
+    expect(navigation.classList.contains('is-open')).toBe(false)
+
+    menu.click()
+    expect(menu.getAttribute('aria-expanded')).toBe('true')
+    expect(navigation.classList.contains('is-open')).toBe(true)
+
+    menu.click()
+    expect(menu.getAttribute('aria-expanded')).toBe('false')
+    expect(navigation.classList.contains('is-open')).toBe(false)
+  })
+
   it('選擇答案不重建題目 DOM，避免手機捲動位置跳動', () => {
     mount()
     const questionCard = document.querySelector('[data-question-key]')
@@ -65,7 +81,7 @@ describe('租賃題庫操作介面', () => {
   })
 
   it('可選章節開始隨機練習，並在下一題後避免同輪重複', () => {
-    mount([question(1, 1), question(1, 2), question(2, 1)])
+    mount([question(1, 1), question(1, 2), question(2, 1)], 'chapter')
     const select = document.querySelector<HTMLSelectElement>('[data-action="chapter-select"]')!
     select.value = '1'
     select.dispatchEvent(new Event('change', { bubbles: true }))
@@ -78,7 +94,7 @@ describe('租賃題庫操作介面', () => {
   })
 
   it('模擬考鎖定百題、可切題並於交卷後顯示章節統計與收合詳解', () => {
-    mount(examQuestions)
+    mount(examQuestions, 'mock')
     document.querySelector<HTMLButtonElement>('[data-action="start-mock"]')!.click()
     expect(document.querySelectorAll('[data-exam-index]').length).toBe(100)
     expect(document.body.textContent).toContain('第 1 / 100 題')
@@ -100,7 +116,7 @@ describe('租賃題庫操作介面', () => {
     const duplicateTextExam = examQuestions.map((item) =>
       item.chapter_no === 1 && item.question_no <= 2 ? { ...item, question: '相同題目文字？' } : item,
     )
-    mount(duplicateTextExam)
+    mount(duplicateTextExam, 'mock')
     document.querySelector<HTMLButtonElement>('[data-action="start-mock"]')!.click()
     document.querySelector<HTMLButtonElement>('[data-action="submit-mock"]')!.click()
     document.querySelector<HTMLButtonElement>('[data-action="confirm-submit-mock"]')!.click()
@@ -122,7 +138,7 @@ describe('租賃題庫操作介面', () => {
       ...examQuestions.filter((item) => !(item.chapter_no === 1 && item.question_no === 10)),
       question(2, 11),
     ]
-    mount(insufficient)
+    mount(insufficient, 'mock')
 
     expect(() => document.querySelector<HTMLButtonElement>('[data-action="start-mock"]')!.click()).not.toThrow()
     expect(document.body.textContent).toMatch(/第 1 章.*至少.*10 題/)
@@ -131,7 +147,7 @@ describe('租賃題庫操作介面', () => {
   })
 
   it('模擬考交卷會把已作答題目寫入統計與錯題紀錄', () => {
-    mount(examQuestions)
+    mount(examQuestions, 'mock')
     document.querySelector<HTMLButtonElement>('[data-action="start-mock"]')!.click()
     const firstKey = document.querySelector('[data-question-key]')!.getAttribute('data-question-key')
     document.querySelector<HTMLButtonElement>('[data-option="B"]')!.click()
@@ -146,33 +162,31 @@ describe('租賃題庫操作介面', () => {
 
   it('倒數時間到會自動交卷', () => {
     vi.useFakeTimers()
-    mount(examQuestions)
+    mount(examQuestions, 'mock')
     document.querySelector<HTMLButtonElement>('[data-action="start-mock"]')!.click()
     vi.advanceTimersByTime(120 * 60 * 1000)
     expect(document.body.textContent).toContain('模擬考成績')
   })
 
-  it('Review 顯示本機統計，能只練錯題並重設紀錄', () => {
+  it('錯題回顧顯示本機統計，能只練錯題並重設紀錄', () => {
     localStorage.setItem('rent-exam-history-v1', JSON.stringify({ answered: 3, correct: 2, wrongKeys: ['c1-s1-q1'] }))
-    mount()
-    document.querySelector<HTMLButtonElement>('[data-action="show-review"]')!.click()
+    mount(oneQuestion, 'wrong')
     expect(document.body.textContent).toContain('累計作答：3')
     expect(document.body.textContent).toContain('錯題數：1')
     document.querySelector<HTMLButtonElement>('[data-action="practice-wrongs"]')!.click()
     expect(document.body.textContent).toContain('錯題練習')
-    document.querySelector<HTMLButtonElement>('[data-action="show-review"]')!.click()
+    mount(oneQuestion, 'wrong')
     document.querySelector<HTMLButtonElement>('[data-action="reset-history"]')!.click()
     expect(document.body.textContent).toContain('累計作答：0')
   })
 
-  it('Review 將損壞的本機統計正規化並去除無效與重複錯題 key', () => {
+  it('錯題回顧將損壞的本機統計正規化並去除無效與重複錯題 key', () => {
     localStorage.setItem('rent-exam-history-v1', JSON.stringify({
       answered: -3,
       correct: 99,
       wrongKeys: ['c1-s1-q1', 'c1-s1-q1', 3, null, '<img>'],
     }))
-    mount()
-    document.querySelector<HTMLButtonElement>('[data-action="show-review"]')!.click()
+    mount(oneQuestion, 'wrong')
 
     expect(document.body.textContent).toContain('累計作答：0')
     expect(document.body.textContent).toContain('正確率0%')

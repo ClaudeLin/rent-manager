@@ -12,36 +12,18 @@ import '../styles/app.css'
   <body>
     <main id="app" aria-live="polite"></main>
     <script>
-      import { initRentApp } from '../lib/app'
-      import { validateQuestionBank } from '../lib/questions'
-
       const root = document.querySelector<HTMLElement>('#app')!
-      const escapeHtml = (value: string) => value.replace(/[&<>'"]/g, (character) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' })[character]!)
       const appBase = import.meta.env.BASE_URL.replace(/\/+$/, '')
-      const questionBanks = {
-        withLaw: { label: '有詳解題庫', path: `${appBase}/data/questions_with_law.json` },
-        withoutLaw: { label: '只有答案題庫', path: `${appBase}/data/questions_without_law.json` },
-      } as const
-
-      const renderChoice = (errorMessage = '') => {
-        root.innerHTML = `<section class="question-bank-choice" aria-labelledby="question-bank-heading"><p class="eyebrow">租賃住宅管理人員題庫</p><h1 id="question-bank-heading">選擇題庫</h1><p>請選擇要使用的題庫版本，再開始練習。</p>${errorMessage ? `<p class="load-error-message" role="alert">${escapeHtml(errorMessage)}</p>` : ''}<div class="question-bank-actions"><button type="button" class="button" data-question-bank="withLaw">有詳解題庫</button><button type="button" class="button secondary-button" data-question-bank="withoutLaw">只有答案題庫</button></div></section>`
+      const practicePath = `${appBase}/practice/`
+      const renderChoice = () => {
+        root.innerHTML = `<section class="question-bank-choice" aria-labelledby="question-bank-heading"><p class="eyebrow">租賃住宅管理人員題庫</p><h1 id="question-bank-heading">選擇題庫</h1><p>請選擇要使用的題庫版本。之後可隨時由頁首返回更換。</p><div class="question-bank-actions"><button type="button" class="button" data-question-bank="withLaw">有詳解題庫</button><button type="button" class="button secondary-button" data-question-bank="withoutLaw">只有答案題庫</button></div></section>`
         root.querySelectorAll<HTMLButtonElement>('[data-question-bank]').forEach((button) => {
-          button.addEventListener('click', () => loadQuestionBank(button.dataset.questionBank as keyof typeof questionBanks))
+          button.addEventListener('click', () => {
+            sessionStorage.setItem('rent-exam-question-bank-v1', button.dataset.questionBank!)
+            window.location.assign(practicePath)
+          })
         })
       }
-
-      const loadQuestionBank = async (bankKey: keyof typeof questionBanks) => {
-        const bank = questionBanks[bankKey]
-        root.innerHTML = `<p class="loading">正在載入${bank.label}…</p>`
-        try {
-          const response = await fetch(bank.path)
-          if (!response.ok) throw new Error(`題庫讀取失敗（${response.status}）`)
-          initRentApp(root, validateQuestionBank(await response.json()))
-        } catch (error) {
-          renderChoice(error instanceof Error ? `${bank.label}目前無法載入：${error.message}` : `${bank.label}目前無法載入，請稍後再試。`)
-        }
-      }
-
       renderChoice()
     </script>
   </body>

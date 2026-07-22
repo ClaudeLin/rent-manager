@@ -1,7 +1,8 @@
 import { defineConfig, devices } from '@playwright/test'
 
-const configuredPath = process.env.PUBLIC_APP_PATH || '/practice'
-const appPath = `/${configuredPath.split('/').filter(Boolean).join('/')}/`
+const configuredPath = process.env.PUBLIC_APP_PATH || ''
+const segments = configuredPath.split('/').filter(Boolean)
+const appPath = segments.length ? `/${segments.join('/')}/` : '/'
 
 export default defineConfig({
   testDir: './tests/e2e',

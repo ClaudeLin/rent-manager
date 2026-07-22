@@ -9,7 +9,7 @@
     "test:watch": "vitest",
     "typecheck": "astro check",
     "build": "npm run typecheck && astro build",
-    "preview": "astro preview",
+    "preview": "vite preview --outDir dist --strictPort",
     "test:e2e": "playwright test"
   },
   "dependencies": {
@@ -21,6 +21,7 @@
     "@types/node": "^24.13.3",
     "jsdom": "^27.4.0",
     "typescript": "^5.9.3",
+    "vite": "8.1.5",
     "vitest": "^4.1.0"
   }
 }

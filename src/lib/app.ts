@@ -1,8 +1,10 @@
 import { buildMockExam, questionKey, selectQuestions, type Question } from './questions'
 import { formatRemaining, remainingSeconds, shouldAutoSubmit } from './timer'
 
-type Mode = 'practice' | 'mock' | 'result' | 'review'
+type Mode = 'practice' | 'chapter-select' | 'mock-start' | 'mock' | 'result' | 'review'
 type History = { answered: number; correct: number; wrongKeys: string[] }
+type AppRoutes = { home: string; practice: string; chapter: string; mock: string; wrong: string }
+type InitRentAppOptions = { routes?: AppRoutes; bankLabel?: string; initialView?: 'practice' | 'chapter' | 'mock' | 'wrong' }
 
 const HISTORY_KEY = 'rent-exam-history-v1'
 const escapeHtml = (value: string) => value.replace(/[&<>'"]/g, (character) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' })[character]!)
@@ -25,8 +27,10 @@ function writeHistory(history: History): void {
   try { localStorage.setItem(HISTORY_KEY, JSON.stringify(history)) } catch { /* Storage may be unavailable in restricted contexts. */ }
 }
 
-export function initRentApp(root: HTMLElement, questions: Question[]): void {
-  let mode: Mode = 'practice'
+export function initRentApp(root: HTMLElement, questions: Question[], options: InitRentAppOptions = {}): void {
+  const routes = options.routes ?? { home: '/', practice: '/practice/', chapter: '/practice/chapter/', mock: '/mock/', wrong: '/wrong/' }
+  const initialView = options.initialView ?? 'practice'
+  let mode: Mode = initialView === 'chapter' ? 'chapter-select' : initialView === 'mock' ? 'mock-start' : initialView === 'wrong' ? 'review' : 'practice'
   let practiceQuestions = selectQuestions(questions, { count: questions.length })
   let practiceIndex = 0
   let selectedAnswer: string | undefined
@@ -72,13 +76,22 @@ export function initRentApp(root: HTMLElement, questions: Question[]): void {
     examRecorded = true
   }
   const stopTimer = () => { if (timerId !== undefined) clearInterval(timerId); timerId = undefined }
-  const renderHeader = () => `<header class="brand"><p>🏠 租賃住宅管理人員</p><strong>Rental Housing Manager</strong><small>Practice • Mock Exam • Review</small></header>`
+  const renderHeader = () => `<header class="brand"><a class="brand-home" href="${escapeHtml(routes.home)}" aria-label="返回入口">🏠 租賃住宅管理人員</a><strong>Rental Housing Manager</strong><button type="button" class="mobile-menu-toggle" data-action="toggle-mobile-menu" aria-expanded="false" aria-controls="primary-nav">選單</button><small>Practice • Mock Exam • Review${options.bankLabel ? `・目前：${escapeHtml(options.bankLabel)}` : ''}</small><nav id="primary-nav" class="primary-nav" aria-label="主要導覽"><a href="${escapeHtml(routes.practice)}">全題練習</a><a href="${escapeHtml(routes.chapter)}">章節練習</a><a href="${escapeHtml(routes.mock)}">模擬考</a><a href="${escapeHtml(routes.wrong)}">錯題回顧</a><a href="${escapeHtml(routes.home)}">更換題庫</a></nav></header>`
   const renderOptions = (question: Question, answer?: string, reveal = false) => `<div class="options">${question.options.map((option) => {
     const selected = answer === option.id
     const correctness = reveal ? (option.id === question.answer ? ' is-correct' : selected ? ' is-wrong' : '') : selected ? ' is-selected' : ''
     return `<button type="button" class="option${correctness}" data-option="${escapeHtml(option.id)}" aria-pressed="${selected}"><b>${escapeHtml(option.id)}</b><span>${escapeHtml(option.text)}</span></button>`
   }).join('')}</div>`
   const renderExplanation = (question: Question, action = 'toggle-explanation', open = explanationOpen) => question.law_reference ? `${button(action, open ? '收合詳解' : '查看詳解')} ${open ? `<aside class="explanation">${escapeHtml(question.law_reference)}</aside>` : ''}` : ''
+  const chapterOptions = () => `<option value="">請選擇章節</option>${[...new Map(questions.map((q) => [q.chapter_no, q.chapter_title])).entries()].map(([number, title]) => `<option value="${number}" ${String(number) === chapterNo ? 'selected' : ''}>第 ${number} 章・${escapeHtml(title)}</option>`).join('')}`
+  const renderChapterSelect = () => {
+    root.innerHTML = `${renderHeader()}<main class="single-column"><section class="card"><p class="eyebrow">Chapter Practice</p><h1>章節練習</h1><label>選擇章節<select data-action="chapter-select">${chapterOptions()}</select></label>${button('start-chapter-practice', '開始章節練習', chapterNo ? '' : 'disabled')}</section></main>`
+    bind()
+  }
+  const renderMockStart = () => {
+    root.innerHTML = `${renderHeader()}<main class="single-column"><section class="card"><p class="eyebrow">Mock Exam</p><h1>120 分鐘模擬考</h1><p>每章隨機抽取 10 題，共 100 題。交卷後可查看各章統計與逐題答案。</p>${button('start-mock', '開始模擬考', mockError ? 'disabled' : '')}${mockError ? `<p class="feedback error" role="alert">${escapeHtml(mockError)}</p>` : ''}</section></main>`
+    bind()
+  }
   const renderPractice = () => {
     const current = currentPractice()
     if (!current) {
@@ -86,7 +99,10 @@ export function initRentApp(root: HTMLElement, questions: Question[]): void {
       bind()
       return
     }
-    root.innerHTML = `${renderHeader()}<main class="app-shell"><aside class="control-panel"><h2>練習設定</h2>${button('start-all-practice', '全題庫隨機練習')}<label>選擇章節<select data-action="chapter-select"><option value="">請選擇章節</option>${[...new Map(questions.map((q) => [q.chapter_no, q.chapter_title])).entries()].map(([number, title]) => `<option value="${number}" ${String(number) === chapterNo ? 'selected' : ''}>第 ${number} 章・${escapeHtml(title)}</option>`).join('')}</select></label>${button('start-chapter-practice', '開始章節練習', chapterNo ? '' : 'disabled')} ${button('start-mock', '開始 120 分鐘模擬考', mockError ? 'disabled' : '')} ${button('show-review', 'Review')}${mockError ? `<p class="feedback error" role="alert">${escapeHtml(mockError)}</p>` : ''}</aside><section class="card question-card" data-question-key="${questionKey(current)}"><p class="eyebrow">${escapeHtml(practiceLabel)}・第 ${practiceIndex + 1} / ${practiceQuestions.length} 題</p><h1>${escapeHtml(current.question)}</h1>${renderOptions(current, selectedAnswer, checked)}${checked ? `<p class="feedback ${selectedAnswer === current.answer ? 'success' : 'error'}">${selectedAnswer === current.answer ? '答對了！' : '答錯了。'} 正確答案：${escapeHtml(current.answer)}</p>${renderExplanation(current)}${button('next-practice', practiceIndex + 1 < practiceQuestions.length ? '下一題' : '完成本輪')}</p>` : button('check-practice', '檢查答案', selectedAnswer ? '' : 'disabled')}</section></main>`
+    const controls = initialView === 'chapter'
+      ? `<h2>章節設定</h2><label>選擇章節<select data-action="chapter-select">${chapterOptions()}</select></label>${button('start-chapter-practice', '重新開始章節練習', chapterNo ? '' : 'disabled')} <a class="button" href="${escapeHtml(routes.wrong)}">錯題回顧</a>`
+      : `<h2>練習設定</h2>${button('start-all-practice', '重新隨機排序')} <a class="button" href="${escapeHtml(routes.wrong)}">錯題回顧</a>`
+    root.innerHTML = `${renderHeader()}<main class="app-shell"><aside class="control-panel">${controls}</aside><section class="card question-card" data-question-key="${questionKey(current)}"><p class="eyebrow">${escapeHtml(practiceLabel)}・第 ${practiceIndex + 1} / ${practiceQuestions.length} 題</p><h1>${escapeHtml(current.question)}</h1>${renderOptions(current, selectedAnswer, checked)}${checked ? `<p class="feedback ${selectedAnswer === current.answer ? 'success' : 'error'}">${selectedAnswer === current.answer ? '答對了！' : '答錯了。'} 正確答案：${escapeHtml(current.answer)}</p>${renderExplanation(current)}${button('next-practice', practiceIndex + 1 < practiceQuestions.length ? '下一題' : '完成本輪')}</p>` : button('check-practice', '檢查答案', selectedAnswer ? '' : 'disabled')}</section></main>`
     bind()
   }
   const renderMock = () => {
@@ -98,16 +114,16 @@ export function initRentApp(root: HTMLElement, questions: Question[]): void {
   const renderResult = () => {
     const correct = examQuestions.filter((question) => examAnswers[questionKey(question)] === question.answer).length
     const byChapter = Array.from({ length: 10 }, (_, index) => index + 1).map((chapter) => ({ chapter, total: examQuestions.filter((q) => q.chapter_no === chapter), correct: examQuestions.filter((q) => q.chapter_no === chapter && examAnswers[questionKey(q)] === q.answer).length }))
-    root.innerHTML = `${renderHeader()}<main class="app-shell"><section class="card results"><h1>模擬考成績</h1><p class="score">${correct} / 100 題（${correct}%）</p><h2>章節統計</h2><ul>${byChapter.map(({ chapter, total, correct: chapterCorrect }) => `<li>第 ${chapter} 章：${chapterCorrect} / ${total.length} 題正確</li>`).join('')}</ul><h2>逐題答案</h2>${examQuestions.map((question, index) => { const key = questionKey(question); const open = resultExplanations.has(key); return `<article class="result-item" data-question-key="${key}"><p>第 ${index + 1} 題・你的答案：${escapeHtml(examAnswers[key] ?? '未作答')}；正確答案：${escapeHtml(question.answer)}・${examAnswers[key] === question.answer ? '✓ 正確' : '✗ 錯誤'}</p><h3>${escapeHtml(question.question)}</h3>${renderExplanation(question, 'toggle-result-explanation', open)}</article>` }).join('')}</section></main>`
+    root.innerHTML = `${renderHeader()}<main class="app-shell"><section class="card results"><h1>模擬考成績</h1><p class="score">${correct} / 100 題（${correct}%）</p><a class="button secondary-button" href="${escapeHtml(routes.practice)}">返回練習首頁</a><h2>章節統計</h2><ul>${byChapter.map(({ chapter, total, correct: chapterCorrect }) => `<li>第 ${chapter} 章：${chapterCorrect} / ${total.length} 題正確</li>`).join('')}</ul><h2>逐題答案</h2>${examQuestions.map((question, index) => { const key = questionKey(question); const open = resultExplanations.has(key); return `<article class="result-item" data-question-key="${key}"><p>第 ${index + 1} 題・你的答案：${escapeHtml(examAnswers[key] ?? '未作答')}；正確答案：${escapeHtml(question.answer)}・${examAnswers[key] === question.answer ? '✓ 正確' : '✗ 錯誤'}</p><h3>${escapeHtml(question.question)}</h3>${renderExplanation(question, 'toggle-result-explanation', open)}</article>` }).join('')}</section></main>`
     bind()
   }
   const renderReview = () => {
     const history = readHistory()
     const rate = history.answered ? Math.round(history.correct / history.answered * 100) : 0
-    root.innerHTML = `${renderHeader()}<main class="app-shell"><section class="card"><h1>Review</h1><p>作答紀錄僅保存在此瀏覽器。</p><dl><dt>累計作答</dt><dd>累計作答：${history.answered}</dd><dt>正確率</dt><dd>${rate}%</dd><dt>錯題</dt><dd>錯題數：${history.wrongKeys.length}</dd></dl>${button('practice-wrongs', '只練錯題', history.wrongKeys.length ? '' : 'disabled')} ${button('reset-history', '重設本機紀錄')} ${button('start-all-practice', '返回練習')}</section></main>`
+    root.innerHTML = `${renderHeader()}<main class="app-shell"><section class="card"><h1>錯題回顧</h1><p>作答紀錄僅保存在此瀏覽器。</p><dl><dt>累計作答</dt><dd>累計作答：${history.answered}</dd><dt>正確率</dt><dd>${rate}%</dd><dt>錯題</dt><dd>錯題數：${history.wrongKeys.length}</dd></dl>${button('practice-wrongs', '只練錯題', history.wrongKeys.length ? '' : 'disabled')} ${button('reset-history', '重設本機紀錄')} <a class="button secondary-button" href="${escapeHtml(routes.practice)}">返回練習</a></section></main>`
     bind()
   }
-  const render = () => { if (mode === 'mock') renderMock(); else if (mode === 'result') renderResult(); else if (mode === 'review') renderReview(); else renderPractice() }
+  const render = () => { if (mode === 'chapter-select') renderChapterSelect(); else if (mode === 'mock-start') renderMockStart(); else if (mode === 'mock') renderMock(); else if (mode === 'result') renderResult(); else if (mode === 'review') renderReview(); else renderPractice() }
   const submitExam = () => {
     if (mode !== 'mock') return
     stopTimer()
@@ -141,8 +157,15 @@ export function initRentApp(root: HTMLElement, questions: Question[]): void {
     }))
     root.querySelectorAll<HTMLElement>('[data-action]').forEach((element) => element.addEventListener('click', () => {
       const action = element.dataset.action
+      if (action === 'toggle-mobile-menu') {
+        const navigation = root.querySelector<HTMLElement>('#primary-nav')
+        const expanded = element.getAttribute('aria-expanded') === 'true'
+        element.setAttribute('aria-expanded', String(!expanded))
+        navigation?.classList.toggle('is-open', !expanded)
+        return
+      }
       if (action === 'start-all-practice') { stopTimer(); mode = 'practice'; practiceLabel = '全題庫隨機練習'; practiceQuestions = selectQuestions(questions, { count: questions.length }); practiceIndex = 0; selectedAnswer = undefined; checked = false; explanationOpen = false; render() }
-      if (action === 'start-chapter-practice' && chapterNo) { practiceLabel = `第 ${chapterNo} 章隨機練習`; practiceQuestions = selectQuestions(questions, { chapterNo: Number(chapterNo), count: questions.length }); practiceIndex = 0; selectedAnswer = undefined; checked = false; explanationOpen = false; render() }
+      if (action === 'start-chapter-practice' && chapterNo) { mode = 'practice'; practiceLabel = `第 ${chapterNo} 章隨機練習`; practiceQuestions = selectQuestions(questions, { chapterNo: Number(chapterNo), count: questions.length }); practiceIndex = 0; selectedAnswer = undefined; checked = false; explanationOpen = false; render() }
       if (action === 'check-practice' && selectedAnswer) { checked = true; savePractice(); render() }
       if (action === 'next-practice' && checked) { practiceIndex += 1; selectedAnswer = undefined; checked = false; explanationOpen = false; render() }
       if (action === 'toggle-explanation') { explanationOpen = !explanationOpen; render() }
@@ -186,7 +209,6 @@ export function initRentApp(root: HTMLElement, questions: Question[]): void {
         if (resultExplanations.has(key)) resultExplanations.delete(key); else resultExplanations.add(key)
         render()
       }
-      if (action === 'show-review') { stopTimer(); mode = 'review'; render() }
       if (action === 'practice-wrongs') { const wrong = readHistory().wrongKeys; practiceLabel = '錯題練習'; practiceQuestions = selectQuestions(questions, { count: questions.length, wrongKeys: wrong }).filter((question) => wrong.includes(questionKey(question))); practiceIndex = 0; selectedAnswer = undefined; checked = false; mode = 'practice'; render() }
       if (action === 'reset-history') { try { localStorage.removeItem(HISTORY_KEY) } catch { /* Storage may be unavailable. */ }; render() }
     }))

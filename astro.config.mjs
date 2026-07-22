@@ -1,35 +1,40 @@
-import { copyFileSync, cpSync, existsSync, mkdirSync } from 'node:fs'
+import { cpSync, mkdtempSync, mkdirSync, rmSync } from 'node:fs'
+import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { defineConfig } from 'astro/config'
 import { loadEnv } from 'vite'
 
 const env = loadEnv(process.env.NODE_ENV ?? 'development', process.cwd(), '')
-const configuredPath = env.PUBLIC_APP_PATH === undefined ? '/practice' : env.PUBLIC_APP_PATH
+const configuredPath = env.PUBLIC_APP_PATH ?? ''
 const pathSegments = configuredPath.split('/').filter(Boolean)
 
 if (
-  pathSegments.length === 0
-  || pathSegments.some((segment) => !/^[A-Za-z0-9_-]+$/.test(segment))
+  pathSegments.some((segment) => !/^[A-Za-z0-9_-]+$/.test(segment))
   || ['_astro', 'data'].includes(pathSegments[0])
 ) {
-  throw new Error('PUBLIC_APP_PATH must be a non-root path containing only letters, numbers, hyphens, or underscores')
+  throw new Error('PUBLIC_APP_PATH must contain only letters, numbers, hyphens, or underscores')
 }
 
-const appPath = `/${pathSegments.join('/')}`
+const appPath = pathSegments.length ? `/${pathSegments.join('/')}` : '/'
 
 const scopedRuntimeAssets = {
   name: 'scoped-runtime-assets',
   hooks: {
     'astro:build:done': ({ dir }) => {
+      if (!pathSegments.length) return
       const outputDirectory = fileURLToPath(dir)
-      const scopedDirectory = join(outputDirectory, ...pathSegments)
-      mkdirSync(scopedDirectory, { recursive: true })
-      const indexSource = join(outputDirectory, 'index.html')
-      if (existsSync(indexSource)) copyFileSync(indexSource, join(scopedDirectory, 'index.html'))
-      for (const assetDirectory of ['_astro', 'data']) {
-        const source = join(outputDirectory, assetDirectory)
-        if (existsSync(source)) cpSync(source, join(scopedDirectory, assetDirectory), { recursive: true, force: true })
+      const stagingDirectory = mkdtempSync(join(tmpdir(), 'rent-exam-build-'))
+      const stagedSite = join(stagingDirectory, 'site')
+
+      try {
+        cpSync(outputDirectory, stagedSite, { recursive: true })
+        rmSync(outputDirectory, { recursive: true, force: true })
+        const scopedDirectory = join(outputDirectory, ...pathSegments)
+        mkdirSync(scopedDirectory, { recursive: true })
+        cpSync(stagedSite, scopedDirectory, { recursive: true })
+      } finally {
+        rmSync(stagingDirectory, { recursive: true, force: true })
       }
     },
   },
