@@ -1,0 +1,52 @@
+# 相依套件與建置產物
+node_modules/
+dist/
+.astro/
+.vite/
+coverage/
+
+# 測試產物
+playwright-report/
+test-results/
+blob-report/
+
+# Hermes 內部計畫與驗收截圖
+.hermes/
+
+# 環境變數：保留可公開分享的範本
+.env
+.env.*
+!.env.example
+
+# 日誌與執行期檔案
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+logs/
+
+# OS 與編輯器
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# Python 虛擬環境、快取與轉檔產物
+.venv/
+venv/
+env/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+questions_*.rebuilt.json
+*.rebuilt.json
+conversion_report.json
+
+# 本機來源材料與舊 PDF 轉檔工具；正式題庫以 source-data corrected JSON 為準
+*.pdf
+convert_pdfs.py
