@@ -10,8 +10,10 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import re
 import sys
+import tempfile
 from pathlib import Path
 
 import pdfplumber
@@ -31,6 +33,8 @@ FULLWIDTH_TO_ASCII = str.maketrans("ＡＢＣＤ", "ABCD")
 OPTION_MARKER = re.compile(r"\(([A-DＡ-Ｄ])\)")
 ANSWER = re.compile(r"\(?\s*([A-DＡ-Ｄ])\s*\)?")
 HEADER_TOKENS = {"題號", "題目", "選項", "答案", "法源或來源依據"}
+EXPECTED_COUNT = 966
+EXPECTED_CHAPTERS = set(range(1, 11))
 
 
 def clean(value: str | None) -> str:
@@ -114,11 +118,6 @@ def parse_options(text: str):
             "text": clean(normalized[match.end():end]),
         })
 
-    # A known official source row repeats a marker. The table always contains four
-    # ordered choices, so a four-choice row is repaired by position and validated.
-    if len(options) == 4 and [option["id"] for option in options] != list("ABCD"):
-        for option, expected in zip(options, "ABCD"):
-            option["id"] = expected
     return options
 
 
@@ -199,8 +198,23 @@ def parse_pdf(pdf_path: Path):
     return result
 
 
-def validate(items):
+def validate(items, expected_count: int = EXPECTED_COUNT):
     errors = []
+    if len(items) != expected_count:
+        errors.append(f"count {len(items)} != expected {expected_count}")
+
+    chapters = {
+        question.get("chapter_no")
+        for question in items
+        if isinstance(question.get("chapter_no"), int)
+    }
+    missing_chapters = sorted(EXPECTED_CHAPTERS - chapters)
+    unexpected_chapters = sorted(chapters - EXPECTED_CHAPTERS)
+    if missing_chapters:
+        errors.append(f"missing chapters {missing_chapters}")
+    if unexpected_chapters:
+        errors.append(f"unexpected chapters {unexpected_chapters}")
+
     seen = set()
     by_section = {}
     for question in items:
@@ -274,6 +288,80 @@ def refuses_corrected_output(
     )
 
 
+def _write_staged_file(output: Path, content: str) -> Path:
+    output.parent.mkdir(parents=True, exist_ok=True)
+    descriptor, temporary_name = tempfile.mkstemp(
+        dir=output.parent,
+        prefix=f".{output.name}.",
+        suffix=".tmp",
+    )
+    temporary = Path(temporary_name)
+    try:
+        with os.fdopen(descriptor, "w", encoding="utf-8") as handle:
+            handle.write(content)
+            handle.flush()
+            os.fsync(handle.fileno())
+    except BaseException:
+        temporary.unlink(missing_ok=True)
+        raise
+    return temporary
+
+
+def write_output_pair(
+    with_law: Path,
+    without_law: Path,
+    with_law_content: str,
+    without_law_content: str,
+    *,
+    overwrite: bool,
+) -> None:
+    """Install both outputs transactionally, restoring originals on failure."""
+    outputs = (with_law, without_law)
+    if paths_alias(*outputs):
+        raise ValueError("with-law and without-law outputs must be different files")
+
+    existing = [output for output in outputs if output.exists()]
+    if existing and not overwrite:
+        names = ", ".join(str(output) for output in existing)
+        raise FileExistsError(f"refusing to overwrite existing output(s): {names}")
+
+    contents = (with_law_content, without_law_content)
+    staged: dict[Path, Path] = {}
+    backups: dict[Path, Path] = {}
+    installed: list[Path] = []
+    try:
+        for output, content in zip(outputs, contents):
+            staged[output] = _write_staged_file(output, content)
+
+        for output in existing:
+            descriptor, backup_name = tempfile.mkstemp(
+                dir=output.parent,
+                prefix=f".{output.name}.",
+                suffix=".backup",
+            )
+            os.close(descriptor)
+            backup = Path(backup_name)
+            backup.unlink()
+            os.replace(output, backup)
+            backups[output] = backup
+
+        for output in outputs:
+            os.replace(staged[output], output)
+            installed.append(output)
+    except BaseException:
+        for output in installed:
+            output.unlink(missing_ok=True)
+        for output, backup in backups.items():
+            if backup.exists():
+                os.replace(backup, output)
+        raise
+    finally:
+        for temporary in staged.values():
+            temporary.unlink(missing_ok=True)
+        for backup in backups.values():
+            backup.unlink(missing_ok=True)
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(
         description="Convert the official with-law rental exam PDF to JSON."
@@ -289,7 +377,12 @@ def main() -> int:
         type=Path,
         default=Path("questions_without_law.rebuilt.json"),
     )
-    parser.add_argument("--expected-count", type=int, default=None)
+    parser.add_argument("--expected-count", type=int, default=EXPECTED_COUNT)
+    parser.add_argument(
+        "--force",
+        action="store_true",
+        help="Replace existing candidate outputs using backup-and-rollback writes",
+    )
     parser.add_argument(
         "--allow-corrected-overwrite",
         action="store_true",
@@ -308,29 +401,30 @@ def main() -> int:
         )
 
     items = parse_pdf(args.pdf)
-    errors = validate(items)
-    if args.expected_count is not None and len(items) != args.expected_count:
-        errors.insert(0, f"count {len(items)} != expected {args.expected_count}")
+    if args.expected_count <= 0:
+        parser.error("--expected-count must be a positive integer")
+    errors = validate(items, expected_count=args.expected_count)
     if errors:
         print(f"Validation failed with {len(errors)} error(s):", file=sys.stderr)
         for error in errors[:100]:
             print(f" - {error}", file=sys.stderr)
         return 1
 
-    for output in outputs:
-        output.parent.mkdir(parents=True, exist_ok=True)
-    args.with_law.write_text(
-        json.dumps(items, ensure_ascii=False, indent=2) + "\n",
-        encoding="utf-8",
-    )
     stripped = [
         {key: value for key, value in question.items() if key != "law_reference"}
         for question in items
     ]
-    args.without_law.write_text(
-        json.dumps(stripped, ensure_ascii=False, indent=2) + "\n",
-        encoding="utf-8",
-    )
+    try:
+        write_output_pair(
+            args.with_law,
+            args.without_law,
+            json.dumps(items, ensure_ascii=False, indent=2) + "\n",
+            json.dumps(stripped, ensure_ascii=False, indent=2) + "\n",
+            overwrite=args.force,
+        )
+    except (FileExistsError, OSError, ValueError) as error:
+        print(f"Output failed: {error}", file=sys.stderr)
+        return 1
     print(f"OK: {len(items)} questions")
     print(args.with_law.resolve())
     print(args.without_law.resolve())
