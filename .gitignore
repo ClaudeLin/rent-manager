@@ -47,6 +47,5 @@ questions_*.rebuilt.json
 *.rebuilt.json
 conversion_report.json
 
-# 本機來源材料與舊 PDF 轉檔工具；正式題庫以 source-data corrected JSON 為準
+# 本機來源 PDF；正式題庫以 source-data corrected JSON 為準
 *.pdf
-convert_pdfs.py
