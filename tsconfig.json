@@ -1,7 +1,17 @@
 {
   "extends": "astro/tsconfigs/strict",
   "compilerOptions": {
-    "types": ["vitest/globals", "node"]
+    "types": [
+      "vitest/globals",
+      "node"
+    ]
   },
-  "include": ["src", "tests", "astro.config.mjs", "vitest.config.ts", "playwright.config.ts"]
+  "include": [
+    "src",
+    "tests",
+    "astro.config.mjs",
+    "vitest.config.ts",
+    "playwright.config.ts",
+    "./worker-configuration.d.ts"
+  ]
 }
