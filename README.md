@@ -1,5 +1,7 @@
 # 租賃住宅管理人員練習工具
 
+[![Tests](https://github.com/ClaudeLin/rent-manager/actions/workflows/tests.yml/badge.svg?branch=main)](https://github.com/ClaudeLin/rent-manager/actions/workflows/tests.yml)
+
 以靜態題庫 JSON 提供全題練習、章節練習、120 分鐘模擬考與錯題回顧的前端網站。進入網站後須先選擇「有詳解題庫」或「只有答案題庫」；同一輪練習及同一場模擬考不會混用兩份資料。
 
 ## 先備條件
