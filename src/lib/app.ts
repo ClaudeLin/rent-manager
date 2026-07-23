@@ -2,6 +2,7 @@ import { buildMockExam, questionKey, selectQuestions, type Question } from './qu
 import { formatRemaining, remainingSeconds, shouldAutoSubmit } from './timer'
 
 type Mode = 'practice' | 'chapter-select' | 'mock-start' | 'mock' | 'result' | 'review'
+type ChapterOrder = 'random' | 'sequential'
 type History = { answered: number; correct: number; wrongKeys: string[] }
 type AppRoutes = { home: string; practice: string; chapter: string; mock: string; wrong: string }
 type InitRentAppOptions = { routes?: AppRoutes; bankLabel?: string; initialView?: 'practice' | 'chapter' | 'mock' | 'wrong' }
@@ -38,6 +39,7 @@ export function initRentApp(root: HTMLElement, questions: Question[], options: I
   let explanationOpen = false
   let practiceLabel = '全題庫隨機練習'
   let chapterNo = ''
+  let chapterOrder: ChapterOrder = 'random'
   let examQuestions: Question[] = []
   let examAnswers: Record<string, string> = {}
   let examIndex = 0
@@ -84,8 +86,9 @@ export function initRentApp(root: HTMLElement, questions: Question[], options: I
   }).join('')}</div>`
   const renderExplanation = (question: Question, action = 'toggle-explanation', open = explanationOpen) => question.law_reference ? `${button(action, open ? '收合詳解' : '查看詳解')} ${open ? `<aside class="explanation">${escapeHtml(question.law_reference)}</aside>` : ''}` : ''
   const chapterOptions = () => `<option value="">請選擇章節</option>${[...new Map(questions.map((q) => [q.chapter_no, q.chapter_title])).entries()].map(([number, title]) => `<option value="${number}" ${String(number) === chapterNo ? 'selected' : ''}>第 ${number} 章・${escapeHtml(title)}</option>`).join('')}`
+  const chapterControls = () => `<label>選擇章節<select data-action="chapter-select">${chapterOptions()}</select></label><label>出題順序<select data-action="chapter-order"><option value="random" ${chapterOrder === 'random' ? 'selected' : ''}>隨機出題</option><option value="sequential" ${chapterOrder === 'sequential' ? 'selected' : ''}>依題號順序</option></select></label>`
   const renderChapterSelect = () => {
-    root.innerHTML = `${renderHeader()}<main class="single-column"><section class="card"><p class="eyebrow">Chapter Practice</p><h1>章節練習</h1><label>選擇章節<select data-action="chapter-select">${chapterOptions()}</select></label></section></main>`
+    root.innerHTML = `${renderHeader()}<main class="single-column"><section class="card"><p class="eyebrow">Chapter Practice</p><h1>章節練習</h1>${chapterControls()}</section></main>`
     bind()
   }
   const renderMockStart = () => {
@@ -100,7 +103,7 @@ export function initRentApp(root: HTMLElement, questions: Question[], options: I
       return
     }
     const controls = initialView === 'chapter'
-      ? `<h2>章節設定</h2><label>選擇章節<select data-action="chapter-select">${chapterOptions()}</select></label>`
+      ? `<h2>章節設定</h2>${chapterControls()}`
       : `<h2>練習設定</h2>${button('start-all-practice', '重新隨機排序')} <a class="button" href="${escapeHtml(routes.wrong)}">錯題回顧</a>`
     root.innerHTML = `${renderHeader()}<main class="app-shell"><aside class="control-panel">${controls}</aside><section class="card question-card" data-question-key="${questionKey(current)}"><p class="eyebrow">${escapeHtml(practiceLabel)}・第 ${practiceIndex + 1} / ${practiceQuestions.length} 題</p><h1>${escapeHtml(current.question)}</h1>${renderOptions(current, selectedAnswer, checked)}${checked ? `<p class="feedback ${selectedAnswer === current.answer ? 'success' : 'error'}">${selectedAnswer === current.answer ? '答對了！' : '答錯了。'} 正確答案：${escapeHtml(current.answer)}</p>${renderExplanation(current)}${button('next-practice', practiceIndex + 1 < practiceQuestions.length ? '下一題' : '完成本輪')}</p>` : `<div class="action-group">${button('check-practice', '檢查答案', selectedAnswer ? '' : 'disabled')}</div>`}</section></main>`
     bind()
@@ -124,6 +127,17 @@ export function initRentApp(root: HTMLElement, questions: Question[], options: I
     bind()
   }
   const render = () => { if (mode === 'chapter-select') renderChapterSelect(); else if (mode === 'mock-start') renderMockStart(); else if (mode === 'mock') renderMock(); else if (mode === 'result') renderResult(); else if (mode === 'review') renderReview(); else renderPractice() }
+  const loadChapterPractice = () => {
+    if (!chapterNo) { mode = 'chapter-select'; render(); return }
+    mode = 'practice'
+    practiceLabel = `第 ${chapterNo} 章${chapterOrder === 'sequential' ? '依題號順序' : '隨機'}練習`
+    practiceQuestions = selectQuestions(questions, { chapterNo: Number(chapterNo), count: questions.length, order: chapterOrder })
+    practiceIndex = 0
+    selectedAnswer = undefined
+    checked = false
+    explanationOpen = false
+    render()
+  }
   const submitExam = () => {
     if (mode !== 'mock') return
     stopTimer()
@@ -151,15 +165,11 @@ export function initRentApp(root: HTMLElement, questions: Question[], options: I
     }))
     root.querySelector<HTMLSelectElement>('[data-action="chapter-select"]')?.addEventListener('change', (event) => {
       chapterNo = (event.target as HTMLSelectElement).value
-      if (!chapterNo) { mode = 'chapter-select'; render(); return }
-      mode = 'practice'
-      practiceLabel = `第 ${chapterNo} 章隨機練習`
-      practiceQuestions = selectQuestions(questions, { chapterNo: Number(chapterNo), count: questions.length })
-      practiceIndex = 0
-      selectedAnswer = undefined
-      checked = false
-      explanationOpen = false
-      render()
+      loadChapterPractice()
+    })
+    root.querySelector<HTMLSelectElement>('[data-action="chapter-order"]')?.addEventListener('change', (event) => {
+      chapterOrder = (event.target as HTMLSelectElement).value as ChapterOrder
+      loadChapterPractice()
     })
     root.querySelectorAll<HTMLButtonElement>('[data-exam-index]').forEach((element) => element.addEventListener('click', () => {
       examIndex = Number(element.dataset.examIndex)

@@ -26,6 +26,7 @@ export interface SelectionOptions extends QuestionFilter {
   count: number
   wrongKeys?: string[]
   rng?: () => number
+  order?: 'random' | 'sequential'
 }
 
 const requiredStrings = ['chapter_code', 'chapter_title', 'section_code', 'section_title', 'question', 'answer'] as const
@@ -74,7 +75,10 @@ export function selectQuestions(questions: Question[], options: SelectionOptions
   const wrong = new Set(options.wrongKeys ?? [])
   const prioritized = candidates.filter((question) => wrong.has(questionKey(question)))
   const remaining = candidates.filter((question) => !wrong.has(questionKey(question)))
-  return [...shuffle(prioritized, random), ...shuffle(remaining, random)].slice(0, Math.max(0, Math.min(options.count, candidates.length)))
+  const order = (items: Question[]) => options.order === 'sequential'
+    ? [...items].sort((left, right) => left.chapter_no - right.chapter_no || left.section_no - right.section_no || left.question_no - right.question_no)
+    : shuffle(items, random)
+  return [...order(prioritized), ...order(remaining)].slice(0, Math.max(0, Math.min(options.count, candidates.length)))
 }
 
 /** 建立固定題組：十章各十題，題目不足時拒絕建卷。 */

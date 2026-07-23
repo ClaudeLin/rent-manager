@@ -90,12 +90,62 @@ describe('租賃題庫操作介面', () => {
     expect(document.querySelector('[data-action="start-chapter-practice"]')).toBeNull()
     expect(document.querySelector('.control-panel a[href="/wrong/"]')).toBeNull()
 
+    document.querySelector<HTMLButtonElement>('[data-option="A"]')!.click()
+    document.querySelector<HTMLButtonElement>('[data-action="check-practice"]')!.click()
+    document.querySelector<HTMLButtonElement>('[data-action="toggle-explanation"]')!.click()
+    document.querySelector<HTMLButtonElement>('[data-action="next-practice"]')!.click()
+    document.querySelector<HTMLButtonElement>('[data-option="A"]')!.click()
+    document.querySelector<HTMLButtonElement>('[data-action="check-practice"]')!.click()
+    document.querySelector<HTMLButtonElement>('[data-action="toggle-explanation"]')!.click()
+
     select = document.querySelector<HTMLSelectElement>('[data-action="chapter-select"]')!
     select.value = '2'
     select.dispatchEvent(new Event('change', { bubbles: true }))
 
     expect(document.querySelector('[data-question-key]')!.getAttribute('data-question-key')).toBe('c2-s1-q1')
     expect(document.body.textContent).toContain('第 2 章隨機練習')
+    expect(document.body.textContent).toContain('第 1 / 1 題')
+    expect(document.querySelector('.option.is-selected')).toBeNull()
+    expect(document.querySelector<HTMLButtonElement>('[data-action="check-practice"]')!.disabled).toBe(true)
+    expect(document.querySelector('.explanation')).toBeNull()
+  })
+
+  it('章節練習可切換為依題號順序並重置作答狀態', () => {
+    mount([question(1, 3), question(1, 1), question(1, 2)], 'chapter')
+    const chapter = document.querySelector<HTMLSelectElement>('[data-action="chapter-select"]')!
+    chapter.value = '1'
+    chapter.dispatchEvent(new Event('change', { bubbles: true }))
+
+    let order = document.querySelector<HTMLSelectElement>('[data-action="chapter-order"]')!
+    expect(order.value).toBe('random')
+    order.value = 'sequential'
+    order.dispatchEvent(new Event('change', { bubbles: true }))
+
+    expect(document.querySelector('[data-question-key]')!.getAttribute('data-question-key')).toBe('c1-s1-q1')
+    expect(document.body.textContent).toContain('第 1 章依題號順序練習')
+
+    document.querySelector<HTMLButtonElement>('[data-option="A"]')!.click()
+    document.querySelector<HTMLButtonElement>('[data-action="check-practice"]')!.click()
+    document.querySelector<HTMLButtonElement>('[data-action="next-practice"]')!.click()
+    expect(document.querySelector('[data-question-key]')!.getAttribute('data-question-key')).toBe('c1-s1-q2')
+    document.querySelector<HTMLButtonElement>('[data-option="A"]')!.click()
+    document.querySelector<HTMLButtonElement>('[data-action="check-practice"]')!.click()
+    document.querySelector<HTMLButtonElement>('[data-action="toggle-explanation"]')!.click()
+    expect(document.querySelector('.explanation')).not.toBeNull()
+
+    order = document.querySelector<HTMLSelectElement>('[data-action="chapter-order"]')!
+    order.value = 'random'
+    order.dispatchEvent(new Event('change', { bubbles: true }))
+
+    expect(document.body.textContent).toContain('第 1 / 3 題')
+    expect(document.querySelector('.option.is-selected')).toBeNull()
+    expect(document.querySelector<HTMLButtonElement>('[data-action="check-practice"]')!.disabled).toBe(true)
+    expect(document.querySelector('.explanation')).toBeNull()
+
+    order = document.querySelector<HTMLSelectElement>('[data-action="chapter-order"]')!
+    order.value = 'sequential'
+    order.dispatchEvent(new Event('change', { bubbles: true }))
+    expect(document.querySelector('[data-question-key]')!.getAttribute('data-question-key')).toBe('c1-s1-q1')
   })
 
   it('模擬考鎖定百題、可切題並於交卷後顯示章節統計與收合詳解', () => {

@@ -61,6 +61,20 @@ describe('題庫 domain', () => {
     expect(new Set(first).size).toBe(2)
   })
 
+  it('可依章節、節次與題號順序選題', () => {
+    const unsorted = [
+      questions[1],
+      { ...questions[0], question_no: 2, question: '第一節第二題' },
+      questions[0],
+    ]
+
+    expect(selectQuestions(unsorted, { count: 3, order: 'sequential' }).map(questionKey)).toEqual([
+      'c1-s1-q1',
+      'c1-s1-q2',
+      'c1-s2-q1',
+    ])
+  })
+
   it('把題數限制在候選題數之內並支援錯題優先', () => {
     expect(selectQuestions(questions, { count: 99, rng: () => 0 })).toHaveLength(3)
     expect(selectQuestions(questions, { count: 2, wrongKeys: ['c2-s1-q1'], rng: () => 0 }).map(questionKey)[0]).toBe('c2-s1-q1')
