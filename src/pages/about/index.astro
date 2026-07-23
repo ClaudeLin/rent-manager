@@ -68,5 +68,10 @@ import '../../styles/app.css'
         navigation?.classList.toggle('is-open', nextExpanded)
       })
     </script>
+    <script>
+  import { registerServiceWorker } from '../../lib/pwa'
+
+  registerServiceWorker()
+</script>
   </body>
 </html>

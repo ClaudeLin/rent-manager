@@ -16,5 +16,10 @@ import '../../styles/app.css'
       import { bootstrapExamPage } from '../../lib/bootstrap'
       bootstrapExamPage(document.querySelector<HTMLElement>('#app')!, 'mock')
     </script>
+    <script>
+  import { registerServiceWorker } from '../../lib/pwa'
+
+  registerServiceWorker()
+</script>
   </body>
 </html>
