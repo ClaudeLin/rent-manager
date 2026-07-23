@@ -8,6 +8,22 @@ import '../../styles/app.css'
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="theme-color" content="#143b63" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+        <link rel="manifest" href="/manifest.webmanifest" />
+    <link
+      rel="apple-touch-icon"
+      sizes="180x180"
+      href="/icons/apple-touch-icon.png"
+    />
+
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta
+      name="apple-mobile-web-app-status-bar-style"
+      content="default"
+    />
+    <meta
+      name="apple-mobile-web-app-title"
+      content="租賃題庫"
+    />
     <title>關於本題庫｜租賃住宅管理人員證照題庫練習</title>
   </head>
   <body>
@@ -71,7 +87,7 @@ import '../../styles/app.css'
     <script>
   import { registerServiceWorker } from '../../lib/pwa'
 
-  registerServiceWorker()
+  void registerServiceWorker()
 </script>
   </body>
 </html>

@@ -4,6 +4,34 @@ import { validateQuestionBank } from './questions'
 export type ExamView = 'practice' | 'chapter' | 'mock' | 'wrong'
 
 const BANK_KEY = 'rent-exam-question-bank-v1'
+const readSelectedBank = (): string | null => {
+  try {
+    const persistentValue = localStorage.getItem(BANK_KEY)
+
+    if (persistentValue) {
+      return persistentValue
+    }
+  } catch {
+    // localStorage 在部分受限制環境可能不可用。
+  }
+
+  try {
+    const sessionValue = sessionStorage.getItem(BANK_KEY)
+
+    if (sessionValue) {
+      // 將舊版 sessionStorage 設定遷移至 localStorage。
+      try {
+        localStorage.setItem(BANK_KEY, sessionValue)
+      } catch {
+        // 無法持久化時仍可繼續使用目前 session。
+      }
+    }
+
+    return sessionValue
+  } catch {
+    return null
+  }
+}
 const escapeHtml = (value: string) => value.replace(/[&<>'"]/g, (character) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' })[character]!)
 
 export async function bootstrapExamPage(root: HTMLElement, initialView: ExamView): Promise<void> {
@@ -20,7 +48,7 @@ export async function bootstrapExamPage(root: HTMLElement, initialView: ExamView
     withoutLaw: { label: '只有答案題庫', path: '/data/questions_without_law.json' },
   } as const
 
-  const bankKey = sessionStorage.getItem(BANK_KEY) as keyof typeof questionBanks | null
+  const bankKey = readSelectedBank() as | keyof typeof questionBanks | null
   if (!bankKey || !(bankKey in questionBanks)) {
     window.location.replace(routes.home)
     return

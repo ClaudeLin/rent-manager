@@ -4,7 +4,7 @@ const result = await generateSW({
   globDirectory: 'dist',
 
   globPatterns: [
-    '**/*.{html,js,css,json,svg,png,jpg,jpeg,webp,ico,woff,woff2}',
+    '**/*.{html,js,css,json,webmanifest,svg,png,jpg,jpeg,webp,ico,woff,woff2}',
   ],
 
   swDest: 'dist/sw.js',

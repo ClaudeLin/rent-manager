@@ -104,3 +104,26 @@ dl { display: grid; grid-template-columns: 1fr auto; gap: .6rem; } dt, dd { marg
   .control-panel { position: sticky; top: 8rem; height: fit-content; }
 }
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { scroll-behavior: auto !important; transition-duration: .01ms !important; animation-duration: .01ms !important; } }
+
+.offline-status {
+  margin: 1rem 0 0;
+  font-size: 0.9rem;
+  line-height: 1.5;
+  color: #52606d;
+}
+
+.offline-status[data-state='preparing'] {
+  color: #52606d;
+}
+
+.offline-status[data-state='ready'] {
+  color: #166534;
+}
+
+.offline-status[data-state='failed'] {
+  color: #b42318;
+}
+
+.offline-status[data-state='unsupported'] {
+  color: #6b7280;
+}
