@@ -156,8 +156,8 @@ test('首次進入先選擇題庫，不會自動載入 JSON', async ({ page }) =
 test('入口顯示來源摘要、練習用途聲明與 About 入口', async ({ page }) => {
   await page.goto(homePath)
 
-  const source = page.getByRole('link', { name: '新北市租賃住宅服務商業同業公會' })
-  await expect(source).toHaveAttribute('href', 'https://www.ntrhm888.org.tw/service/news_view/9674.html')
+  const source = page.getByRole('link', { name: '中華民國租賃住宅服務商業同業公會全國聯合會' })
+  await expect(source).toHaveAttribute('href', 'https://rentalh.org.tw/down-list2.php?lmenuid=12&mpmid=2')
   await expect(source).toHaveAttribute('target', '_blank')
   await expect(source).toHaveAttribute('rel', 'noopener noreferrer')
   await expect(page.getByText('題庫最後更新／轉檔日期：2026/7/21')).toBeVisible()
@@ -169,7 +169,7 @@ test('About 集中顯示資料來源、免責聲明與模擬考規則', async ({
   await page.goto(aboutPath)
 
   await expect(page.getByRole('heading', { name: '關於本題庫' })).toBeVisible()
-  await expect(page.getByRole('link', { name: '新北市租賃住宅服務商業同業公會' })).toHaveAttribute('href', 'https://www.ntrhm888.org.tw/service/news_view/9674.html')
+  await expect(page.getByRole('link', { name: '中華民國租賃住宅服務商業同業公會全國聯合會' })).toHaveAttribute('href', 'https://rentalh.org.tw/down-list2.php?lmenuid=12&mpmid=2')
   await expect(page.getByText('題庫最後更新／轉檔日期：2026/7/21')).toBeVisible()
   await expect(page.getByText('本網站僅供個人學習與測驗練習使用')).toBeVisible()
   await expect(page.getByText('不得作為法律意見或專業服務之替代')).toBeVisible()
