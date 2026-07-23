@@ -87,6 +87,9 @@ dl { display: grid; grid-template-columns: 1fr auto; gap: .6rem; } dt, dd { marg
 .about-page p + p, .about-page ul, .about-page ol { margin-top: .75rem; }
 .about-page li + li { margin-top: .35rem; }
 .about-page a { color: #105f9a; font-weight: 700; text-underline-offset: .16em; }
+.about-page .button { color: #fff; }
+.report-card { border-left: 5px solid #1769aa; }
+.report-card .button { margin-top: 1rem; }
 .disclaimer-card { border-left: 5px solid #f4b942; background: #fffbef; }
 .secondary-button { color: #143b63; border: 1px solid #1769aa; background: #e8f2f9; }
 .secondary-button:hover { color: #fff; background: #105485; }

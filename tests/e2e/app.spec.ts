@@ -176,6 +176,11 @@ test('About 集中顯示資料來源、免責聲明與模擬考規則', async ({
   await expect(page.getByText('第 1 至第 10 章，每章各隨機抽取 10 題，共 100 題')).toBeVisible()
   await expect(page.getByText('每次開始模擬考都會重新抽題')).toBeVisible()
   await expect(page.getByText('作答時間為 120 分鐘')).toBeVisible()
+
+  const report = page.getByRole('link', { name: '前往 GitHub Issues 回報' })
+  await expect(report).toHaveAttribute('href', 'https://github.com/ClaudeLin/rent-manager/issues/new')
+  await expect(report).toHaveAttribute('target', '_blank')
+  await expect(report).toHaveAttribute('rel', 'noopener noreferrer')
 })
 
 test('所有頁面使用同一個根目錄 favicon', async ({ page, request }) => {

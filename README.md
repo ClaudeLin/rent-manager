@@ -155,3 +155,11 @@ Converter 會 fail closed 驗證：
 - 任一輸出檔已存在時，預設拒絕寫入。
 - 只有明確加入 `--force` 才會更新既有候選檔；程式會先寫入並同步 temp files，再以 backup＋rollback 安裝兩份配對輸出，任一安裝失敗會恢復兩份舊檔。
 - 輸出檔名若以 `_corrected.json` 結尾，仍會拒絕執行。雖可用 `--allow-corrected-overwrite` 明確解除名稱保護，但正常流程不應使用；請輸出 `.rebuilt.json` 後再做 semantic diff 與人工審查。
+
+## 問題回報
+
+若發現題目、答案、法源、畫面顯示問題或有功能建議，請至 [GitHub Issues](https://github.com/ClaudeLin/rent-manager/issues/new) 建立回報。建議附上章節、題號、題庫版本與問題描述，請勿提供個人資料。
+
+## 授權
+
+本專案原創程式碼採用 [MIT License](LICENSE) 授權。官方題庫、法源與其他第三方內容的權利仍歸原發布單位或權利人所有，不因本專案的 MIT License 而改變。
