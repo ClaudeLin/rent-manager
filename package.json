@@ -10,13 +10,13 @@
     "typecheck": "astro check",
     "build": "npm run typecheck && astro build && npm run build:sw",
     "build:sw": "node scripts/generate-service-worker.mjs",
-    "preview": "npm run build && wrangler dev",
+    "preview": "vite preview --outDir dist --strictPort",
+    "preview:cloudflare": "npm run build && wrangler dev",
     "test:e2e": "playwright test",
     "generate-types": "wrangler types",
     "deploy": "npm run build && wrangler deploy"
   },
   "dependencies": {
-    "@astrojs/cloudflare": "^14.1.4",
     "astro": "^7.1.3"
   },
   "devDependencies": {
