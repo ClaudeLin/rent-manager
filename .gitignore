@@ -48,3 +48,9 @@ conversion_report.json
 
 # 本機來源 PDF；正式題庫以 source-data corrected JSON 為準
 *.pdf
+
+# wrangler files
+.wrangler
+.dev.vars*
+!.dev.vars.example
+!.env.example
