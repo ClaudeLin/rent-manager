@@ -64,8 +64,26 @@ test('章節練習使用獨立路由並在選章後顯示該章題目', async ({
   await expect(page.locator('[data-action="start-chapter-practice"]')).toHaveCount(0)
   await expect(page.locator('.control-panel').getByRole('link', { name: '錯題回顧' })).toHaveCount(0)
 
+  await expect(page.locator('[data-action="chapter-order"]')).toHaveValue('random')
+  await page.locator('[data-action="chapter-order"]').selectOption('sequential')
+  await expect(page.getByText('第 1 章依題號順序練習').first()).toBeVisible()
+  await expect(page.locator('[data-question-key]')).toHaveAttribute('data-question-key', 'c1-s1-q1')
+  await page.locator('[data-option]').first().click()
+  await page.locator('[data-action="check-practice"]').click()
+  await page.locator('[data-action="next-practice"]').click()
+  await expect(page.locator('[data-question-key]')).toHaveAttribute('data-question-key', 'c1-s1-q2')
+  await page.locator('[data-option]').first().click()
+  await page.locator('[data-action="check-practice"]').click()
+  await page.locator('[data-action="toggle-explanation"]').click()
+  await expect(page.locator('.explanation')).toBeVisible()
+
   await page.locator('[data-action="chapter-select"]').selectOption('2')
-  await expect(page.getByText('第 2 章隨機練習').first()).toBeVisible()
+  await expect(page.getByText('第 2 章依題號順序練習').first()).toBeVisible()
+  await expect(page.locator('[data-question-key]')).toHaveAttribute('data-question-key', 'c2-s1-q1')
+  await expect(page.getByText(/第 1 \/ \d+ 題/).first()).toBeVisible()
+  await expect(page.locator('.option.is-selected')).toHaveCount(0)
+  await expect(page.locator('[data-action="check-practice"]')).toBeDisabled()
+  await expect(page.locator('.explanation')).toHaveCount(0)
 })
 
 test('模擬考使用獨立路由且交卷後可返回練習首頁', async ({ page }) => {
@@ -129,6 +147,16 @@ test('首次進入先選擇題庫，不會自動載入 JSON', async ({ page }) =
   await expect(page.getByRole('button', { name: '有詳解題庫' })).toHaveCSS('min-height', '52px')
   await expect(page.getByRole('button', { name: '只有答案題庫' })).toHaveCSS('min-height', '52px')
   expect(bankRequests).toEqual([])
+})
+
+test('入口顯示官方題庫來源與更新日期', async ({ page }) => {
+  await page.goto(appPath)
+
+  const source = page.getByRole('link', { name: '新北市租賃住宅服務商業同業公會' })
+  await expect(source).toHaveAttribute('href', 'https://www.ntrhm888.org.tw/service/news_view/9674.html')
+  await expect(source).toHaveAttribute('target', '_blank')
+  await expect(source).toHaveAttribute('rel', 'noopener noreferrer')
+  await expect(page.getByText('題庫最後更新／轉檔日期：2026/7/21')).toBeVisible()
 })
 
 test('本機根路徑或部署 Base 行為正確，頁面資源皆由目前 Base 載入', async ({ page, request }) => {

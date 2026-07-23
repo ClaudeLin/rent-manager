@@ -16,7 +16,7 @@ import '../styles/app.css'
       const appBase = import.meta.env.BASE_URL.replace(/\/+$/, '')
       const practicePath = `${appBase}/practice/`
       const renderChoice = () => {
-        root.innerHTML = `<section class="question-bank-choice" aria-labelledby="question-bank-heading"><p class="eyebrow">租賃住宅管理人員題庫</p><h1 id="question-bank-heading">選擇題庫</h1><p>請選擇要使用的題庫版本。之後可隨時由頁首返回更換。</p><div class="question-bank-actions"><button type="button" class="button" data-question-bank="withLaw">有詳解題庫</button><button type="button" class="button secondary-button" data-question-bank="withoutLaw">只有答案題庫</button></div></section>`
+        root.innerHTML = `<section class="question-bank-choice" aria-labelledby="question-bank-heading"><p class="eyebrow">租賃住宅管理人員題庫</p><h1 id="question-bank-heading">選擇題庫</h1><p>請選擇要使用的題庫版本。之後可隨時由頁首返回更換。</p><div class="question-bank-actions"><button type="button" class="button" data-question-bank="withLaw">有詳解題庫</button><button type="button" class="button secondary-button" data-question-bank="withoutLaw">只有答案題庫</button></div><aside class="question-bank-source" aria-labelledby="question-bank-source-heading"><h2 id="question-bank-source-heading">題庫來源</h2><p>題庫取自<a href="https://www.ntrhm888.org.tw/service/news_view/9674.html" target="_blank" rel="noopener noreferrer">新北市租賃住宅服務商業同業公會</a>公布的「全科目含法源依據」與「全科目不含法源依據」。</p><p class="question-bank-updated">題庫最後更新／轉檔日期：<time datetime="2026-07-21">2026/7/21</time></p></aside></section>`
         root.querySelectorAll<HTMLButtonElement>('[data-question-bank]').forEach((button) => {
           button.addEventListener('click', () => {
             sessionStorage.setItem('rent-exam-question-bank-v1', button.dataset.questionBank!)

@@ -69,6 +69,11 @@ dl { display: grid; grid-template-columns: 1fr auto; gap: .6rem; } dt, dd { marg
 .question-bank-choice > p:not(.eyebrow):not(.load-error-message) { margin: 0; color: #425568; }
 .question-bank-actions { display: grid; gap: .75rem; margin-top: 1.4rem; }
 .question-bank-actions .button { width: 100%; min-height: 52px; }
+.question-bank-source { margin-top: 1.4rem; padding: 1rem; border: 1px solid #d8e2ea; border-radius: 12px; color: #425568; background: #f3f7fa; }
+.question-bank-source h2 { margin: 0 0 .45rem; color: #143b63; font-size: 1rem; }
+.question-bank-source p { margin: 0; font-size: .9rem; }
+.question-bank-source a { color: #105f9a; font-weight: 700; text-underline-offset: .16em; }
+.question-bank-source .question-bank-updated { margin-top: .55rem; color: #5c6e7e; font-size: .82rem; }
 .single-column { width: min(720px, 100%); margin: 0 auto; padding: clamp(1rem, 4vw, 2rem); }
 .secondary-button { color: #143b63; border: 1px solid #1769aa; background: #e8f2f9; }
 .secondary-button:hover { color: #fff; background: #105485; }
