@@ -7,17 +7,17 @@ const BANK_KEY = 'rent-exam-question-bank-v1'
 const escapeHtml = (value: string) => value.replace(/[&<>'"]/g, (character) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' })[character]!)
 
 export async function bootstrapExamPage(root: HTMLElement, initialView: ExamView): Promise<void> {
-  const appBase = import.meta.env.BASE_URL.replace(/\/+$/, '')
   const routes = {
-    home: appBase ? `${appBase}/` : '/',
-    practice: `${appBase}/practice/`,
-    chapter: `${appBase}/practice/chapter/`,
-    mock: `${appBase}/mock/`,
-    wrong: `${appBase}/wrong/`,
+    home: '/',
+    practice: '/practice/',
+    chapter: '/practice/chapter/',
+    mock: '/mock/',
+    wrong: '/wrong/',
+    about: '/about/',
   }
   const questionBanks = {
-    withLaw: { label: '有詳解題庫', path: `${appBase}/data/questions_with_law.json` },
-    withoutLaw: { label: '只有答案題庫', path: `${appBase}/data/questions_without_law.json` },
+    withLaw: { label: '有詳解題庫', path: '/data/questions_with_law.json' },
+    withoutLaw: { label: '只有答案題庫', path: '/data/questions_without_law.json' },
   } as const
 
   const bankKey = sessionStorage.getItem(BANK_KEY) as keyof typeof questionBanks | null

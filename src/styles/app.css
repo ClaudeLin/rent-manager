@@ -20,8 +20,10 @@ button:focus-visible, select:focus-visible, a:focus-visible { outline: 3px solid
 .brand p { margin: 0; font-size: 1.05rem; font-weight: 800; }
 .brand strong { display: none; align-self: end; font-size: .77rem; color: #c8ddf1; letter-spacing: .04em; }
 .brand small { display: none; grid-column: 1 / -1; color: #d9e8f5; font-size: .72rem; letter-spacing: .08em; }
-.brand-home { color: #fff; font-weight: 800; text-decoration: none; }
-.mobile-menu-toggle { min-height: 40px; padding: .35rem .75rem; color: #fff; border: 1px solid #ffffff66; border-radius: 8px; background: #ffffff16; font-weight: 800; }
+.brand-home { align-self: center; color: #fff; font-weight: 800; line-height: 1.35; text-decoration: none; }
+.mobile-menu-toggle { display: grid; place-items: center; width: 44px; min-height: 44px; padding: 0; color: #fff; border: 1px solid #ffffff66; border-radius: 8px; background: #ffffff16; }
+.hamburger-icon { display: grid; gap: 4px; width: 20px; }
+.hamburger-line { display: block; height: 2px; border-radius: 999px; background: currentColor; }
 .primary-nav { grid-column: 1 / -1; display: none; grid-template-columns: 1fr 1fr; gap: .4rem; margin-top: .55rem; padding-bottom: .1rem; }
 .primary-nav.is-open { display: grid; }
 .primary-nav a { display: inline-flex; align-items: center; justify-content: center; min-height: 40px; padding: .35rem .65rem; color: #f2f8fd; border: 1px solid #ffffff40; border-radius: 8px; background: #ffffff12; font-size: .82rem; font-weight: 700; text-decoration: none; white-space: nowrap; }
@@ -74,7 +76,18 @@ dl { display: grid; grid-template-columns: 1fr auto; gap: .6rem; } dt, dd { marg
 .question-bank-source p { margin: 0; font-size: .9rem; }
 .question-bank-source a { color: #105f9a; font-weight: 700; text-underline-offset: .16em; }
 .question-bank-source .question-bank-updated { margin-top: .55rem; color: #5c6e7e; font-size: .82rem; }
+.question-bank-source .question-bank-disclaimer { margin-top: .8rem; padding-top: .8rem; border-top: 1px solid #d8e2ea; }
+.question-bank-about { display: inline-block; margin-top: .65rem; color: #105f9a; font-weight: 800; text-underline-offset: .16em; }
 .single-column { width: min(720px, 100%); margin: 0 auto; padding: clamp(1rem, 4vw, 2rem); }
+.about-page { display: grid; gap: 1rem; }
+.about-page h1, .about-page h2 { color: #143b63; }
+.about-page h1 { margin: .2rem 0 .7rem; }
+.about-page h2 { margin: 0 0 .65rem; font-size: 1.2rem; }
+.about-page p { margin: 0; }
+.about-page p + p, .about-page ul, .about-page ol { margin-top: .75rem; }
+.about-page li + li { margin-top: .35rem; }
+.about-page a { color: #105f9a; font-weight: 700; text-underline-offset: .16em; }
+.disclaimer-card { border-left: 5px solid #f4b942; background: #fffbef; }
 .secondary-button { color: #143b63; border: 1px solid #1769aa; background: #e8f2f9; }
 .secondary-button:hover { color: #fff; background: #105485; }
 .load-error-message { margin: 1rem 0 0; padding: .75rem; color: #963838; border-radius: 8px; background: #fff0ed; font-weight: 700; }

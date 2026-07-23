@@ -4,7 +4,7 @@ import { formatRemaining, remainingSeconds, shouldAutoSubmit } from './timer'
 type Mode = 'practice' | 'chapter-select' | 'mock-start' | 'mock' | 'result' | 'review'
 type ChapterOrder = 'random' | 'sequential'
 type History = { answered: number; correct: number; wrongKeys: string[] }
-type AppRoutes = { home: string; practice: string; chapter: string; mock: string; wrong: string }
+type AppRoutes = { home: string; practice: string; chapter: string; mock: string; wrong: string; about: string }
 type InitRentAppOptions = { routes?: AppRoutes; bankLabel?: string; initialView?: 'practice' | 'chapter' | 'mock' | 'wrong' }
 
 const HISTORY_KEY = 'rent-exam-history-v1'
@@ -29,7 +29,7 @@ function writeHistory(history: History): void {
 }
 
 export function initRentApp(root: HTMLElement, questions: Question[], options: InitRentAppOptions = {}): void {
-  const routes = options.routes ?? { home: '/', practice: '/practice/', chapter: '/practice/chapter/', mock: '/mock/', wrong: '/wrong/' }
+  const routes = options.routes ?? { home: '/', practice: '/practice/', chapter: '/practice/chapter/', mock: '/mock/', wrong: '/wrong/', about: '/about/' }
   const initialView = options.initialView ?? 'practice'
   let mode: Mode = initialView === 'chapter' ? 'chapter-select' : initialView === 'mock' ? 'mock-start' : initialView === 'wrong' ? 'review' : 'practice'
   let practiceQuestions = selectQuestions(questions, { count: questions.length })
@@ -78,7 +78,7 @@ export function initRentApp(root: HTMLElement, questions: Question[], options: I
     examRecorded = true
   }
   const stopTimer = () => { if (timerId !== undefined) clearInterval(timerId); timerId = undefined }
-  const renderHeader = () => `<header class="brand"><a class="brand-home" href="${escapeHtml(routes.home)}" aria-label="返回入口">🏠 租賃住宅管理人員</a><strong>Rental Housing Manager</strong><button type="button" class="mobile-menu-toggle" data-action="toggle-mobile-menu" aria-expanded="false" aria-controls="primary-nav">選單</button><small>Practice • Mock Exam • Review${options.bankLabel ? `・目前：${escapeHtml(options.bankLabel)}` : ''}</small><nav id="primary-nav" class="primary-nav" aria-label="主要導覽"><a href="${escapeHtml(routes.practice)}">全題練習</a><a href="${escapeHtml(routes.chapter)}">章節練習</a><a href="${escapeHtml(routes.mock)}">模擬考</a><a href="${escapeHtml(routes.wrong)}">錯題回顧</a><a href="${escapeHtml(routes.home)}">更換題庫</a></nav></header>`
+  const renderHeader = () => `<header class="brand"><a class="brand-home" href="${escapeHtml(routes.home)}" aria-label="返回入口">租賃住宅管理人員證照題庫練習</a><strong>Rental Housing Manager</strong><button type="button" class="mobile-menu-toggle" data-action="toggle-mobile-menu" aria-label="開啟選單" aria-expanded="false" aria-controls="primary-nav"><span class="hamburger-icon" aria-hidden="true"><span class="hamburger-line"></span><span class="hamburger-line"></span><span class="hamburger-line"></span></span></button><small>Practice • Mock Exam • Review${options.bankLabel ? `・目前：${escapeHtml(options.bankLabel)}` : ''}</small><nav id="primary-nav" class="primary-nav" aria-label="主要導覽"><a href="${escapeHtml(routes.practice)}">全題練習</a><a href="${escapeHtml(routes.chapter)}">章節練習</a><a href="${escapeHtml(routes.mock)}">模擬考</a><a href="${escapeHtml(routes.wrong)}">錯題回顧</a><a href="${escapeHtml(routes.about)}">關於本站</a><a href="${escapeHtml(routes.home)}">更換題庫</a></nav></header>`
   const renderOptions = (question: Question, answer?: string, reveal = false) => `<div class="options">${question.options.map((option) => {
     const selected = answer === option.id
     const correctness = reveal ? (option.id === question.answer ? ' is-correct' : selected ? ' is-wrong' : '') : selected ? ' is-selected' : ''
@@ -92,7 +92,7 @@ export function initRentApp(root: HTMLElement, questions: Question[], options: I
     bind()
   }
   const renderMockStart = () => {
-    root.innerHTML = `${renderHeader()}<main class="single-column"><section class="card"><p class="eyebrow">Mock Exam</p><h1>120 分鐘模擬考</h1><p>每章隨機抽取 10 題，共 100 題。交卷後可查看各章統計與逐題答案。</p>${button('start-mock', '開始模擬考', mockError ? 'disabled' : '')}${mockError ? `<p class="feedback error" role="alert">${escapeHtml(mockError)}</p>` : ''}</section></main>`
+    root.innerHTML = `${renderHeader()}<main class="single-column"><section class="card"><p class="eyebrow">Mock Exam</p><h1>120 分鐘模擬考</h1><p>系統會從第 1 至第 10 章，每章各隨機抽取 10 題，共 100 題。每次開始模擬考都會重新抽題，作答時間為 120 分鐘；交卷後可查看各章統計與逐題答案。</p>${button('start-mock', '開始模擬考', mockError ? 'disabled' : '')}${mockError ? `<p class="feedback error" role="alert">${escapeHtml(mockError)}</p>` : ''}</section></main>`
     bind()
   }
   const renderPractice = () => {
@@ -181,8 +181,10 @@ export function initRentApp(root: HTMLElement, questions: Question[], options: I
       if (action === 'toggle-mobile-menu') {
         const navigation = root.querySelector<HTMLElement>('#primary-nav')
         const expanded = element.getAttribute('aria-expanded') === 'true'
-        element.setAttribute('aria-expanded', String(!expanded))
-        navigation?.classList.toggle('is-open', !expanded)
+        const nextExpanded = !expanded
+        element.setAttribute('aria-expanded', String(nextExpanded))
+        element.setAttribute('aria-label', nextExpanded ? '關閉選單' : '開啟選單')
+        navigation?.classList.toggle('is-open', nextExpanded)
         return
       }
       if (action === 'start-all-practice') { stopTimer(); mode = 'practice'; practiceLabel = '全題庫隨機練習'; practiceQuestions = selectQuestions(questions, { count: questions.length }); practiceIndex = 0; selectedAnswer = undefined; checked = false; explanationOpen = false; render() }

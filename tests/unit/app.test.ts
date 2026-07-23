@@ -37,18 +37,24 @@ afterEach(() => {
 })
 
 describe('租賃題庫操作介面', () => {
-  it('手機選單按鈕可切換導覽與 aria-expanded 狀態', () => {
+  it('Header 顯示證照題庫標題，漢堡按鈕可切換導覽與可及性狀態', () => {
     mount()
     const menu = document.querySelector<HTMLButtonElement>('[data-action="toggle-mobile-menu"]')!
     const navigation = document.querySelector<HTMLElement>('#primary-nav')!
+    expect(document.querySelector('.brand-home')!.textContent).toContain('租賃住宅管理人員證照題庫練習')
+    expect(menu.querySelectorAll('.hamburger-line')).toHaveLength(3)
+    expect(menu.getAttribute('aria-label')).toBe('開啟選單')
+    expect(menu.textContent?.trim()).toBe('')
     expect(menu.getAttribute('aria-expanded')).toBe('false')
     expect(navigation.classList.contains('is-open')).toBe(false)
 
     menu.click()
+    expect(menu.getAttribute('aria-label')).toBe('關閉選單')
     expect(menu.getAttribute('aria-expanded')).toBe('true')
     expect(navigation.classList.contains('is-open')).toBe(true)
 
     menu.click()
+    expect(menu.getAttribute('aria-label')).toBe('開啟選單')
     expect(menu.getAttribute('aria-expanded')).toBe('false')
     expect(navigation.classList.contains('is-open')).toBe(false)
   })
@@ -150,6 +156,9 @@ describe('租賃題庫操作介面', () => {
 
   it('模擬考鎖定百題、可切題並於交卷後顯示章節統計與收合詳解', () => {
     mount(examQuestions, 'mock')
+    expect(document.body.textContent).toContain('第 1 至第 10 章，每章各隨機抽取 10 題，共 100 題')
+    expect(document.body.textContent).toContain('每次開始模擬考都會重新抽題')
+    expect(document.body.textContent).toContain('作答時間為 120 分鐘')
     document.querySelector<HTMLButtonElement>('[data-action="start-mock"]')!.click()
     expect(document.querySelectorAll('[data-exam-index]').length).toBe(100)
     expect(document.body.textContent).toContain('第 1 / 100 題')

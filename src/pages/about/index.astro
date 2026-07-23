@@ -1,0 +1,65 @@
+---
+import '../../styles/app.css'
+---
+<!doctype html>
+<html lang="zh-Hant-TW">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#143b63" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <title>關於本題庫｜租賃住宅管理人員證照題庫練習</title>
+  </head>
+  <body>
+    <header class="brand">
+      <a class="brand-home" href="/" aria-label="返回入口">租賃住宅管理人員證照題庫練習</a>
+      <strong>Rental Housing Manager</strong>
+      <button type="button" class="mobile-menu-toggle" data-action="toggle-mobile-menu" aria-label="開啟選單" aria-expanded="false" aria-controls="primary-nav"><span class="hamburger-icon" aria-hidden="true"><span class="hamburger-line"></span><span class="hamburger-line"></span><span class="hamburger-line"></span></span></button>
+      <small>About • Sources • Disclaimer</small>
+      <nav id="primary-nav" class="primary-nav" aria-label="主要導覽">
+        <a href="/practice/">全題練習</a><a href="/practice/chapter/">章節練習</a><a href="/mock/">模擬考</a><a href="/wrong/">錯題回顧</a><a href="/about/" aria-current="page">關於本站</a><a href="/">選擇題庫</a>
+      </nav>
+    </header>
+    <main class="single-column about-page">
+      <section class="card">
+        <p class="eyebrow">About</p>
+        <h1>關於本題庫</h1>
+        <p>本站提供租賃住宅管理人員題庫的全題練習、章節練習、模擬考與錯題回顧功能，協助使用者進行個人學習與自我測驗。</p>
+      </section>
+
+      <section class="card" aria-labelledby="source-heading">
+        <h2 id="source-heading">資料來源</h2>
+        <p>題庫取自<a href="https://www.ntrhm888.org.tw/service/news_view/9674.html" target="_blank" rel="noopener noreferrer">新北市租賃住宅服務商業同業公會</a>公布的「全科目含法源依據」與「全科目不含法源依據」兩份檔案。</p>
+        <p>題庫最後更新／轉檔日期：<time datetime="2026-07-21">2026/7/21</time></p>
+      </section>
+
+      <section class="card" aria-labelledby="mock-rules-heading">
+        <h2 id="mock-rules-heading">模擬考出題規則</h2>
+        <ol>
+          <li>從第 1 至第 10 章，每章各隨機抽取 10 題，共 100 題。</li>
+          <li>每次開始模擬考都會重新抽題，同一場考試不會重複出現同一題。</li>
+          <li>作答時間為 120 分鐘；時間結束時系統會自動交卷。</li>
+          <li>作答期間不顯示答案或詳解，交卷後才提供成績、章節統計與逐題檢視。</li>
+          <li>任一章題數不足 10 題時，系統不會建立不完整的模擬考。</li>
+        </ol>
+      </section>
+
+      <section class="card disclaimer-card" aria-labelledby="disclaimer-heading">
+        <h2 id="disclaimer-heading">免責聲明</h2>
+        <p>本網站僅供個人學習與測驗練習使用，不代表主管機關、題庫發布單位或任何考試主辦單位之官方網站。</p>
+        <p>題目、答案與法源資訊可能因法規修正、官方勘誤或轉檔過程而有變動，請以主管機關及官方最新公告為準。</p>
+        <p>本網站不保證內容完整、即時或適用於特定情況，亦不得作為法律意見或專業服務之替代。</p>
+      </section>
+    </main>
+    <script>
+      const menu = document.querySelector<HTMLButtonElement>('[data-action="toggle-mobile-menu"]')
+      const navigation = document.querySelector<HTMLElement>('#primary-nav')
+      menu?.addEventListener('click', () => {
+        const nextExpanded = menu.getAttribute('aria-expanded') !== 'true'
+        menu.setAttribute('aria-expanded', String(nextExpanded))
+        menu.setAttribute('aria-label', nextExpanded ? '關閉選單' : '開啟選單')
+        navigation?.classList.toggle('is-open', nextExpanded)
+      })
+    </script>
+  </body>
+</html>
