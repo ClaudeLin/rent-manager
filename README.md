@@ -2,8 +2,6 @@
 
 以靜態題庫 JSON 提供全題練習、章節練習、120 分鐘模擬考與錯題回顧的前端網站。進入網站後須先選擇「有詳解題庫」或「只有答案題庫」；同一輪練習及同一場模擬考不會混用兩份資料。
 
-> 本專案不需要將密碼、API 金鑰、正式網址或正式部署路徑寫入 Git。部署資訊只應設定於部署平台的環境變數。
-
 ## 先備條件
 
 - Node.js（建議使用目前仍受支援的 LTS 版本）
@@ -25,15 +23,16 @@ npm ci
 npm run dev
 ```
 
-本機開發不需要建立 `.env`，也不需要知道正式部署路徑。終端機會顯示實際來源網址；預設路由如下：
+本機開發不需要設定環境變數。終端機會顯示實際來源網址；路由如下：
 
 | 路徑 | 功能 |
 |---|---|
 | `/` | 選擇有詳解或只有答案題庫 |
 | `/practice` | 全題庫隨機單題練習 |
-| `/practice/chapter` | 選擇章節後隨機練習 |
-| `/mock` | 120 分鐘、十章各十題模擬考 |
+| `/practice/chapter` | 選擇章節後隨機或依題號順序練習 |
+| `/mock` | 120 分鐘、十章各隨機抽十題模擬考 |
 | `/wrong` | 作答統計、錯題回顧與錯題練習 |
+| `/about` | 題庫來源、模擬考規則與免責聲明 |
 
 題庫選擇保存在目前分頁的 `sessionStorage`，所以重新整理功能頁後仍會使用同一份題庫。可隨時由頁首的「更換題庫」返回入口重選。
 
@@ -49,32 +48,20 @@ npm run test:e2e
 # 型別與 Astro 檢查
 npm run typecheck
 
-# 產生靜態檔案（預設以根路徑輸出至 dist/）
+# 產生靜態檔案（輸出至 dist/）
 npm run build
 
 # 預覽建置結果
 npm run preview
 ```
 
-## 部署至子路徑
+## 靜態部署
 
-本機預設使用根路徑。只有部署時才需要由平台注入：
-
-```dotenv
-PUBLIC_SITE_ORIGIN=https://yourdomain.example
-PUBLIC_APP_PATH=/your/base/path
-```
-
-- `PUBLIC_SITE_ORIGIN`：公開來源網址。
-- `PUBLIC_APP_PATH`：部署子路徑；每一段只接受英文字母、數字、連字號或底線。
-
-設定後，入口與功能頁會自動加上該 Base，例如 `/your/base/path/practice`、`/your/base/path/mock`。HTML、Astro 資產及兩份 Runtime JSON 也會輸出至同一 Base。請只在部署平台設定正式值，不要提交正式網址或路徑。
-
-Cloudflare Pages 泛用設定：
+本專案固定使用網站根目錄路由，不需要設定部署網址、Base path 或環境變數。靜態託管平台可使用：
 
 - **Build command**：`npm run build`
 - **Build output directory**：`dist`
-- **環境變數**：依部署環境設定 `PUBLIC_SITE_ORIGIN` 與 `PUBLIC_APP_PATH`
+
 
 ## 練習紀錄與重設
 
@@ -87,6 +74,7 @@ Cloudflare Pages 泛用設定：
 - [租賃住宅管理人員測驗題庫｜新北市租賃住宅服務商業同業公會](https://www.ntrhm888.org.tw/service/news_view/9674.html)
 - 來源頁提供「全科目含法源依據」與「全科目不含法源依據」兩份檔案。
 - 本專案目前題庫最後更新／轉檔日期：**2026/7/21**。
+- 網站 `/about` 集中說明資料來源、模擬考規則與免責聲明；題庫僅供個人學習及測驗練習使用，內容仍應以官方最新公告為準。
 
 使用者確認的 corrected 原始來源位於 `source-data/`，不可由轉換程式直接覆寫：
 

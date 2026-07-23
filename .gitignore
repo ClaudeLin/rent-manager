@@ -13,10 +13,9 @@ blob-report/
 # Hermes 內部計畫與驗收截圖
 .hermes/
 
-# 環境變數：保留可公開分享的範本
+# 本機機密設定（專案本身不依賴環境變數）
 .env
 .env.*
-!.env.example
 
 # 日誌與執行期檔案
 *.log
