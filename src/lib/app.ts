@@ -1,4 +1,5 @@
 import { buildMockExam, questionKey, selectQuestions, type Question } from './questions'
+import { annotateQuestionText, ignoredQuestionKeys, questionAnnotationMap, questionAnnotationsSignature, type QuestionAnnotation, type QuestionAnnotationsDocument } from './question-annotations'
 import { clearStoredSession, hydrateStoredSession, questionBankSignature, readStoredSession, writeStoredSession, type BankKey } from './session'
 import { formatRemaining, remainingSeconds, shouldAutoSubmit } from './timer'
 
@@ -6,7 +7,7 @@ type Mode = 'practice' | 'chapter-select' | 'mock-start' | 'mock' | 'result' | '
 type ChapterOrder = 'random' | 'sequential'
 type History = { answered: number; correct: number; wrongKeys: string[]; recordedExamIds: string[] }
 type AppRoutes = { home: string; practice: string; chapter: string; mock: string; wrong: string; about: string }
-type InitRentAppOptions = { routes?: AppRoutes; bankLabel?: string; bankKey?: BankKey; initialView?: 'practice' | 'chapter' | 'mock' | 'wrong' }
+type InitRentAppOptions = { routes?: AppRoutes; bankLabel?: string; bankKey?: BankKey; initialView?: 'practice' | 'chapter' | 'mock' | 'wrong'; annotations?: QuestionAnnotationsDocument }
 
 const HISTORY_KEY = 'rent-exam-history-v1'
 const escapeHtml = (value: string) => value.replace(/[&<>'"]/g, (character) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' })[character]!)
@@ -36,7 +37,11 @@ export function initRentApp(root: HTMLElement, questions: Question[], options: I
   const routes = options.routes ?? { home: '/', practice: '/practice/', chapter: '/practice/chapter/', mock: '/mock/', wrong: '/wrong/', about: '/about/' }
   const initialView = options.initialView ?? 'practice'
   const bankKey = options.bankKey ?? 'withLaw'
-  const bankSignature = questionBankSignature(questions)
+  const annotations = options.annotations ?? { schema_version: 1, updated_at: '1970-01-01', annotations: [] }
+  const annotationsByKey = questionAnnotationMap(annotations)
+  const ignoredKeys = ignoredQuestionKeys(annotations)
+  const annotationSignature = questionAnnotationsSignature(annotations)
+  const bankSignature = questionBankSignature(questions, annotationSignature)
   let mode: Mode = initialView === 'chapter' ? 'chapter-select' : initialView === 'mock' ? 'mock-start' : initialView === 'wrong' ? 'review' : 'practice'
   let practiceQuestions = selectQuestions(questions, { count: questions.length })
   let practiceIndex = 0
@@ -54,14 +59,14 @@ export function initRentApp(root: HTMLElement, questions: Question[], options: I
   let timerId: ReturnType<typeof setInterval> | undefined
   let resultExplanations = new Set<string>()
   const unavailableChapter = Array.from({ length: 10 }, (_, index) => index + 1)
-    .find((chapter) => questions.filter((question) => question.chapter_no === chapter).length < 10)
+    .find((chapter) => questions.filter((question) => question.chapter_no === chapter && !ignoredKeys.has(questionKey(question))).length < 10)
   let mockError = unavailableChapter ? `第 ${unavailableChapter} 章題數不足，至少需要 10 題，無法建立模擬考。` : ''
   let confirmingSubmit = false
   let examRecorded = false
   let settingsCollapsed = true
 
   const storedSession = readStoredSession()
-  const restoredSession = hydrateStoredSession(storedSession, questions, bankKey, initialView)
+  const restoredSession = hydrateStoredSession(storedSession, questions, bankKey, initialView, annotationSignature, ignoredKeys)
   if (restoredSession?.kind === 'practice') {
     mode = 'practice'
     practiceQuestions = restoredSession.questions
@@ -156,6 +161,9 @@ export function initRentApp(root: HTMLElement, questions: Question[], options: I
     return `<button type="button" class="option${correctness}" data-option="${escapeHtml(option.id)}" aria-pressed="${selected}"><b>${escapeHtml(option.id)}</b><span>${escapeHtml(option.text)}</span></button>`
   }).join('')}</div>`
   const renderExplanation = (question: Question, action = 'toggle-explanation', open = explanationOpen) => question.law_reference ? `${button(action, open ? '收合詳解' : '查看詳解')} ${open ? `<aside class="explanation">${escapeHtml(question.law_reference)}</aside>` : ''}` : ''
+  const renderQuestionAnnotation = (annotation?: QuestionAnnotation) => annotation
+    ? `<aside class="question-annotation ${annotation.type}" data-annotation-type="${annotation.type}" role="note"><strong>${annotation.type === 'ignore' ? '此題可忽略' : '題目文字提示'}</strong><p>${escapeHtml(annotation.message)}</p></aside>`
+    : ''
   const chapterOptions = () => `<option value="">請選擇章節</option>${[...new Map(questions.map((q) => [q.chapter_no, q.chapter_title])).entries()].map(([number, title]) => `<option value="${number}" ${String(number) === chapterNo ? 'selected' : ''}>第 ${number} 章・${escapeHtml(title)}</option>`).join('')}`
   const chapterControls = () => `<label>選擇章節<select data-action="chapter-select">${chapterOptions()}</select></label><label>出題順序<select data-action="chapter-order"><option value="random" ${chapterOrder === 'random' ? 'selected' : ''}>隨機出題</option><option value="sequential" ${chapterOrder === 'sequential' ? 'selected' : ''}>依題號順序</option></select></label>`
   const renderChapterSelect = () => {
@@ -163,7 +171,7 @@ export function initRentApp(root: HTMLElement, questions: Question[], options: I
     bind()
   }
   const renderMockStart = () => {
-    root.innerHTML = `${renderHeader()}<main class="single-column"><section class="card"><p class="eyebrow">Mock Exam</p><h1>120 分鐘模擬考</h1><p>系統會從第 1 至第 10 章，每章各隨機抽取 10 題，共 100 題。每次開始模擬考都會重新抽題，作答時間為 120 分鐘；交卷後可查看各章統計與逐題答案。</p>${button('start-mock', '開始模擬考', mockError ? 'disabled' : '')}${mockError ? `<p class="feedback error" role="alert">${escapeHtml(mockError)}</p>` : ''}</section></main>`
+    root.innerHTML = `${renderHeader()}<main class="single-column"><section class="card"><p class="eyebrow">Mock Exam</p><h1>120 分鐘模擬考</h1><p>系統會從第 1 至第 10 章，每章各隨機抽取 10 題，共 100 題；經實際課程註記為「可忽略」的題目不納入抽題。每次開始模擬考都會重新抽題，作答時間為 120 分鐘；交卷後可查看各章統計與逐題答案。</p>${button('start-mock', '開始模擬考', mockError ? 'disabled' : '')}${mockError ? `<p class="feedback error" role="alert">${escapeHtml(mockError)}</p>` : ''}</section></main>`
     bind()
   }
   const renderPractice = () => {
@@ -184,19 +192,21 @@ export function initRentApp(root: HTMLElement, questions: Question[], options: I
         ? button('return-wrong-review', '返回錯題回顧')
       : `${button('start-all-practice', '重新隨機排序')} <a class="button" href="${escapeHtml(routes.wrong)}">錯題回顧</a>`
     const toggleVerb = settingsCollapsed ? '展開' : '收合'
-    root.innerHTML = `${renderHeader()}<main class="app-shell"><aside class="control-panel settings-panel${settingsCollapsed ? ' is-collapsed' : ''}"><div class="settings-heading"><div><h2>${settingsTitle}</h2><p class="settings-summary">${escapeHtml(settingsSummary)}</p></div><button type="button" class="settings-toggle" data-action="toggle-settings" aria-label="${toggleVerb}${settingsTitle}" aria-expanded="${!settingsCollapsed}" aria-controls="practice-settings"><span data-settings-toggle-label>${toggleVerb}</span><span aria-hidden="true">${settingsCollapsed ? '＋' : '−'}</span></button></div><div id="practice-settings" class="settings-body" ${settingsCollapsed ? 'hidden' : ''}>${controls}</div></aside><section class="card question-card" data-question-key="${questionKey(current)}"><p class="eyebrow">${escapeHtml(practiceLabel)}・第 ${practiceIndex + 1} / ${practiceQuestions.length} 題</p><h1>${escapeHtml(current.question)}</h1>${renderOptions(current, selectedAnswer, checked)}${checked ? `<p class="feedback ${selectedAnswer === current.answer ? 'success' : 'error'}" data-answer-feedback role="status" tabindex="-1">${selectedAnswer === current.answer ? '答對了！' : '答錯了。'} 正確答案：${escapeHtml(current.answer)}</p>${renderExplanation(current)}</p>${button('next-practice', practiceIndex + 1 < practiceQuestions.length ? '下一題' : '完成本輪')}</p>` : `<div class="action-group">${button('check-practice', '檢查答案', selectedAnswer ? '' : 'disabled')}</div>`}</section></main>`
+    const annotation = annotationsByKey.get(questionKey(current))
+    root.innerHTML = `${renderHeader()}<main class="app-shell"><aside class="control-panel settings-panel${settingsCollapsed ? ' is-collapsed' : ''}"><div class="settings-heading"><div><h2>${settingsTitle}</h2><p class="settings-summary">${escapeHtml(settingsSummary)}</p></div><button type="button" class="settings-toggle" data-action="toggle-settings" aria-label="${toggleVerb}${settingsTitle}" aria-expanded="${!settingsCollapsed}" aria-controls="practice-settings"><span data-settings-toggle-label>${toggleVerb}</span><span aria-hidden="true">${settingsCollapsed ? '＋' : '−'}</span></button></div><div id="practice-settings" class="settings-body" ${settingsCollapsed ? 'hidden' : ''}>${controls}</div></aside><section class="card question-card" data-question-key="${questionKey(current)}"><p class="eyebrow">${escapeHtml(practiceLabel)}・第 ${practiceIndex + 1} / ${practiceQuestions.length} 題</p>${renderQuestionAnnotation(annotation)}<h1>${escapeHtml(annotateQuestionText(current, annotation))}</h1>${renderOptions(current, selectedAnswer, checked)}${checked ? `<p class="feedback ${selectedAnswer === current.answer ? 'success' : 'error'}" data-answer-feedback role="status" tabindex="-1">${selectedAnswer === current.answer ? '答對了！' : '答錯了。'} 正確答案：${escapeHtml(current.answer)}</p>${renderExplanation(current)}</p>${button('next-practice', practiceIndex + 1 < practiceQuestions.length ? '下一題' : '完成本輪')}</p>` : `<div class="action-group">${button('check-practice', '檢查答案', selectedAnswer ? '' : 'disabled')}</div>`}</section></main>`
     bind()
   }
   const renderMock = () => {
     const current = examQuestions[examIndex]
+    const annotation = annotationsByKey.get(questionKey(current))
     const unanswered = examQuestions.filter((question) => !examAnswers[questionKey(question)]).length
-    root.innerHTML = `${renderHeader()}<main class="app-shell"><aside class="control-panel"><h2>模擬考</h2><p class="timer" data-timer>${formatRemaining(remainingSeconds(examStartedAt, Date.now()))}</p><p>已答 ${examQuestions.length - unanswered} / 100</p>${button('submit-mock', '交卷')}${confirmingSubmit ? `<div class="confirm" role="alert"><p>尚有 ${unanswered} 題未作答</p><div class="action-group">${button('confirm-submit-mock', '確認交卷')}${button('cancel-submit-mock', '繼續作答')}</div></div>` : ''}</aside><section class="card question-card" data-question-key="${questionKey(current)}"><p class="eyebrow">第 ${examIndex + 1} / 100 題・第 ${current.chapter_no} 章</p><h1>${escapeHtml(current.question)}</h1>${renderOptions(current, examAnswers[questionKey(current)])}<nav class="pager">${button('mock-prev', '上一題', examIndex ? '' : 'disabled')}${button('mock-next', '下一題', examIndex < 99 ? '' : 'disabled')}</nav><div class="exam-map" aria-label="試題導覽">${examQuestions.map((question, index) => `<button type="button" data-exam-index="${index}" class="${examAnswers[questionKey(question)] ? 'answered' : ''}" aria-label="第 ${index + 1} 題">${index + 1}</button>`).join('')}</div></section></main>`
+    root.innerHTML = `${renderHeader()}<main class="app-shell"><aside class="control-panel"><h2>模擬考</h2><p class="timer" data-timer>${formatRemaining(remainingSeconds(examStartedAt, Date.now()))}</p><p>已答 ${examQuestions.length - unanswered} / 100</p>${button('submit-mock', '交卷')}${confirmingSubmit ? `<div class="confirm" role="alert"><p>尚有 ${unanswered} 題未作答</p><div class="action-group">${button('confirm-submit-mock', '確認交卷')}${button('cancel-submit-mock', '繼續作答')}</div></div>` : ''}</aside><section class="card question-card" data-question-key="${questionKey(current)}"><p class="eyebrow">第 ${examIndex + 1} / 100 題・第 ${current.chapter_no} 章</p>${renderQuestionAnnotation(annotation)}<h1>${escapeHtml(annotateQuestionText(current, annotation))}</h1>${renderOptions(current, examAnswers[questionKey(current)])}<nav class="pager">${button('mock-prev', '上一題', examIndex ? '' : 'disabled')}${button('mock-next', '下一題', examIndex < 99 ? '' : 'disabled')}</nav><div class="exam-map" aria-label="試題導覽">${examQuestions.map((question, index) => `<button type="button" data-exam-index="${index}" class="${examAnswers[questionKey(question)] ? 'answered' : ''}" aria-label="第 ${index + 1} 題">${index + 1}</button>`).join('')}</div></section></main>`
     bind()
   }
   const renderResult = () => {
     const correct = examQuestions.filter((question) => examAnswers[questionKey(question)] === question.answer).length
     const byChapter = Array.from({ length: 10 }, (_, index) => index + 1).map((chapter) => ({ chapter, total: examQuestions.filter((q) => q.chapter_no === chapter), correct: examQuestions.filter((q) => q.chapter_no === chapter && examAnswers[questionKey(q)] === q.answer).length }))
-    root.innerHTML = `${renderHeader()}<main class="app-shell"><section class="card results"><h1>模擬考成績</h1><p class="score">${correct} / 100 題（${correct}%）</p><a class="button secondary-button" href="${escapeHtml(routes.practice)}">返回練習首頁</a><h2>章節統計</h2><ul>${byChapter.map(({ chapter, total, correct: chapterCorrect }) => `<li>第 ${chapter} 章：${chapterCorrect} / ${total.length} 題正確</li>`).join('')}</ul><h2>逐題答案</h2>${examQuestions.map((question, index) => { const key = questionKey(question); const open = resultExplanations.has(key); return `<article class="result-item" data-question-key="${key}"><p>第 ${index + 1} 題・你的答案：${escapeHtml(examAnswers[key] ?? '未作答')}；正確答案：${escapeHtml(question.answer)}・${examAnswers[key] === question.answer ? '✓ 正確' : '✗ 錯誤'}</p><h3>${escapeHtml(question.question)}</h3>${renderExplanation(question, 'toggle-result-explanation', open)}</article>` }).join('')}</section></main>`
+    root.innerHTML = `${renderHeader()}<main class="app-shell"><section class="card results"><h1>模擬考成績</h1><p class="score">${correct} / 100 題（${correct}%）</p><a class="button secondary-button" href="${escapeHtml(routes.practice)}">返回練習首頁</a><h2>章節統計</h2><ul>${byChapter.map(({ chapter, total, correct: chapterCorrect }) => `<li>第 ${chapter} 章：${chapterCorrect} / ${total.length} 題正確</li>`).join('')}</ul><h2>逐題答案</h2>${examQuestions.map((question, index) => { const key = questionKey(question); const open = resultExplanations.has(key); const annotation = annotationsByKey.get(key); return `<article class="result-item" data-question-key="${key}"><p>第 ${index + 1} 題・你的答案：${escapeHtml(examAnswers[key] ?? '未作答')}；正確答案：${escapeHtml(question.answer)}・${examAnswers[key] === question.answer ? '✓ 正確' : '✗ 錯誤'}</p>${renderQuestionAnnotation(annotation)}<h3>${escapeHtml(annotateQuestionText(question, annotation))}</h3>${renderExplanation(question, 'toggle-result-explanation', open)}</article>` }).join('')}</section></main>`
     bind()
   }
   const renderReview = () => {
@@ -314,7 +324,7 @@ export function initRentApp(root: HTMLElement, questions: Question[], options: I
       if (action === 'toggle-explanation') { explanationOpen = !explanationOpen; saveCurrentPracticeSession(); render() }
       if (action === 'start-mock') {
         try {
-          examQuestions = buildMockExam(questions)
+          examQuestions = buildMockExam(questions, Math.random, ignoredKeys)
           examAnswers = {}
           examIndex = 0
           examStartedAt = Date.now()

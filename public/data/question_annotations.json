@@ -1,0 +1,25 @@
+{
+  "schema_version": 1,
+  "updated_at": "2026-07-23",
+  "annotations": [
+    {
+      "question_key": "c2-s1-q5",
+      "type": "ignore",
+      "message": "依實際課程資訊，此題可忽略；模擬考不會抽到此題。"
+    },
+    {
+      "question_key": "c2-s1-q17",
+      "type": "typo",
+      "message": "題目原文疑有錯字，考試仍可能沿用原文；括號內「未」為補充字詞。",
+      "question_replacement": {
+        "from": "並為約定",
+        "to": "並為（未）約定"
+      }
+    },
+    {
+      "question_key": "c2-s1-q23",
+      "type": "ignore",
+      "message": "依實際課程資訊，此題可忽略；模擬考不會抽到此題。"
+    }
+  ]
+}

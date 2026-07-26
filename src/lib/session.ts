@@ -46,8 +46,8 @@ const isAnswer = (value: unknown): value is string => typeof value === 'string' 
 const isAttemptId = (value: unknown): value is string => typeof value === 'string' && /^attempt-[A-Za-z0-9_-]{8,80}$/.test(value)
 const isSafeInteger = (value: unknown): value is number => Number.isSafeInteger(value) && Number(value) >= 0
 
-export function questionBankSignature(questions: Question[]): string {
-  const content = [...questions]
+export function questionBankSignature(questions: Question[], context = ''): string {
+  const content = `${context}\u001d${[...questions]
     .sort((left, right) => questionKey(left).localeCompare(questionKey(right)))
     .map((question) => [
       questionKey(question),
@@ -56,7 +56,7 @@ export function questionBankSignature(questions: Question[]): string {
       ...question.options.flatMap((option) => [option.id, option.text]),
       question.law_reference ?? '',
     ].join('\u001f'))
-    .join('\u001e')
+    .join('\u001e')}`
 
   let hash = 0x811c9dc5
   for (let index = 0; index < content.length; index += 1) {
@@ -121,11 +121,14 @@ export function hydrateStoredSession(
   questions: Question[],
   bankKey: BankKey,
   expectedView: SessionView,
+  signatureContext = '',
+  excludedQuestionKeys: ReadonlySet<string> = new Set(),
 ): HydratedSession | null {
   const stored = parseStoredSession(value)
   if (!stored || stored.bankKey !== bankKey || stored.view !== expectedView) return null
-  if (stored.bankSignature !== questionBankSignature(questions)) return null
+  if (stored.bankSignature !== questionBankSignature(questions, signatureContext)) return null
   if (stored.kind === 'mock' && stored.startedAt > Date.now()) return null
+  if (stored.kind === 'mock' && stored.questionKeys.some((key) => excludedQuestionKeys.has(key))) return null
 
   const byKey = new Map(questions.map((question) => [questionKey(question), question]))
   const restoredQuestions = stored.questionKeys.map((key) => byKey.get(key))

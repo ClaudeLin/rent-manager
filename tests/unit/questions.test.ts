@@ -101,6 +101,29 @@ describe('題庫 domain', () => {
     expect(() => buildMockExam(bank)).toThrow('第 10 章')
   })
 
+  it('模擬考排除 ignore 題後仍從每章抽足十題', () => {
+    const bank = Array.from({ length: 10 }, (_, chapterIndex) =>
+      Array.from({ length: 25 }, (_, questionIndex) => ({
+        ...questions[0], chapter_no: chapterIndex + 1, section_no: 1, question_no: questionIndex + 1,
+      })),
+    ).flat()
+    const ignored = new Set(['c2-s1-q5', 'c2-s1-q23'])
+    const exam = buildMockExam(bank, () => 0.5, ignored)
+
+    expect(exam).toHaveLength(100)
+    expect(exam.some((question) => ignored.has(questionKey(question)))).toBe(false)
+    expect(Array.from({ length: 10 }, (_, index) => exam.filter((question) => question.chapter_no === index + 1).length)).toEqual(Array(10).fill(10))
+  })
+
+  it('模擬考排除 ignore 題後章節不足十題時 fail closed', () => {
+    const bank = Array.from({ length: 10 }, (_, chapterIndex) =>
+      Array.from({ length: 10 }, (_, questionIndex) => ({
+        ...questions[0], chapter_no: chapterIndex + 1, section_no: 1, question_no: questionIndex + 1,
+      })),
+    ).flat()
+    expect(() => buildMockExam(bank, () => 0.5, new Set(['c2-s1-q5']))).toThrow('第 2 章')
+  })
+
   it('模擬考使用指定 RNG 時題組與順序可重現', () => {
     const bank = Array.from({ length: 10 }, (_, chapterIndex) =>
       Array.from({ length: 12 }, (_, questionIndex) => ({
