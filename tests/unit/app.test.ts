@@ -1,6 +1,8 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { initRentApp } from '../../src/lib/app'
+import type { QuestionAnnotationsDocument } from '../../src/lib/question-annotations'
 import type { Question } from '../../src/lib/questions'
+import { questionBankSignature } from '../../src/lib/session'
 
 const testStorage = new Map<string, string>()
 const storage: Storage = {
@@ -25,13 +27,18 @@ const examQuestions = Array.from({ length: 10 }, (_, chapter) =>
   Array.from({ length: 10 }, (_, index) => question(chapter + 1, index + 1)),
 ).flat()
 
-function mount(questions: Question[] = oneQuestion, initialView: 'practice' | 'chapter' | 'mock' | 'wrong' = 'practice') {
+function mount(
+  questions: Question[] = oneQuestion,
+  initialView: 'practice' | 'chapter' | 'mock' | 'wrong' = 'practice',
+  annotations?: QuestionAnnotationsDocument,
+) {
   document.body.innerHTML = '<main id="app"></main>'
-  initRentApp(document.querySelector<HTMLElement>('#app')!, questions, { initialView, bankKey: 'withLaw' })
+  initRentApp(document.querySelector<HTMLElement>('#app')!, questions, { initialView, bankKey: 'withLaw', annotations })
 }
 
 afterEach(() => {
   vi.useRealTimers()
+  vi.restoreAllMocks()
   document.body.innerHTML = ''
   localStorage.clear()
 })
@@ -70,6 +77,37 @@ describe('租賃題庫操作介面', () => {
     expect(document.querySelector('[data-option="B"]')!.classList.contains('is-selected')).toBe(true)
     expect(document.querySelector('[data-option="A"]')!.getAttribute('aria-pressed')).toBe('false')
     expect(document.querySelector('[data-option="B"]')!.getAttribute('aria-pressed')).toBe('true')
+  })
+
+  it('練習模式標示可忽略題，錯字題只在顯示時插入括號修正', () => {
+    const ignored = question(2, 5)
+    const typo = { ...question(2, 17), question: '除言明租金外，並為約定租金應如何支付。' }
+    const annotations: QuestionAnnotationsDocument = {
+      schema_version: 1,
+      updated_at: '2026-07-23',
+      annotations: [
+        { question_key: 'c2-s1-q5', type: 'ignore', message: '依實際課程資訊，此題可忽略；模擬考不會抽到此題。' },
+        {
+          question_key: 'c2-s1-q17',
+          type: 'typo',
+          message: '題目原文疑有錯字，考試仍可能沿用原文；括號內「未」為補充字詞。',
+          question_replacement: { from: '並為約定', to: '並為（未）約定' },
+        },
+      ],
+    }
+
+    mount([ignored], 'practice', annotations)
+    expect(document.querySelector('[data-annotation-type="ignore"]')?.textContent).toContain('此題可忽略')
+    expect(document.querySelector('h1')?.textContent).toBe(ignored.question)
+
+    localStorage.clear()
+    mount([typo], 'chapter', annotations)
+    const chapter = document.querySelector<HTMLSelectElement>('[data-action="chapter-select"]')!
+    chapter.value = '2'
+    chapter.dispatchEvent(new Event('change', { bubbles: true }))
+    expect(document.querySelector('h1')?.textContent).toContain('並為（未）約定')
+    expect(document.querySelector('[data-annotation-type="typo"]')?.textContent).toContain('考試仍可能沿用原文')
+    expect(typo.question).toContain('並為約定')
   })
 
   it('題目設定可收合與展開，檢查答案後自動收合並保留摘要', () => {
@@ -218,6 +256,61 @@ describe('租賃題庫操作介面', () => {
     expect(document.body.textContent).not.toContain('法源 1-1')
     document.querySelector<HTMLButtonElement>('[data-action="toggle-result-explanation"]')!.click()
     expect(document.body.textContent).toContain('法源')
+  })
+
+  it('模擬考排除 ignore 題，且註記變更會更新 session fingerprint', () => {
+    vi.spyOn(Math, 'random').mockReturnValue(0.5)
+    const bank = Array.from({ length: 10 }, (_, chapter) =>
+      Array.from({ length: 25 }, (_, index) => question(chapter + 1, index + 1)),
+    ).flat()
+    const annotations: QuestionAnnotationsDocument = {
+      schema_version: 1,
+      updated_at: '2026-07-23',
+      annotations: [
+        { question_key: 'c2-s1-q5', type: 'ignore', message: '此題可忽略。' },
+        { question_key: 'c2-s1-q23', type: 'ignore', message: '此題可忽略。' },
+      ],
+    }
+
+    mount(bank, 'mock', annotations)
+    document.querySelector<HTMLButtonElement>('[data-action="start-mock"]')!.click()
+
+    const stored = JSON.parse(localStorage.getItem('rent-exam-session-v1')!)
+    expect(stored.questionKeys).not.toContain('c2-s1-q5')
+    expect(stored.questionKeys).not.toContain('c2-s1-q23')
+    expect(stored.bankSignature).not.toBe(questionBankSignature(bank))
+  })
+
+  it('模擬考中的錯字題顯示括號修正與原文提示', () => {
+    const typo = {
+      ...question(2, 17),
+      question: '除言明租金外，並為約定租金應如何支付。',
+    }
+    const bank = examQuestions.map((item) => item.chapter_no === 2 && item.question_no === 10 ? typo : item)
+    const annotations: QuestionAnnotationsDocument = {
+      schema_version: 1,
+      updated_at: '2026-07-23',
+      annotations: [{
+        question_key: 'c2-s1-q17',
+        type: 'typo',
+        message: '題目原文疑有錯字，考試仍可能沿用原文；括號內「未」為補充字詞。',
+        question_replacement: { from: '並為約定', to: '並為（未）約定' },
+      }],
+    }
+
+    mount(bank, 'mock', annotations)
+    document.querySelector<HTMLButtonElement>('[data-action="start-mock"]')!.click()
+    const keys = JSON.parse(localStorage.getItem('rent-exam-session-v1')!).questionKeys as string[]
+    document.querySelector<HTMLButtonElement>(`[data-exam-index="${keys.indexOf('c2-s1-q17')}"]`)!.click()
+
+    expect(document.querySelector('h1')?.textContent).toContain('並為（未）約定')
+    expect(document.querySelector('[data-annotation-type="typo"]')?.textContent).toContain('考試仍可能沿用原文')
+
+    document.querySelector<HTMLButtonElement>('[data-action="submit-mock"]')!.click()
+    document.querySelector<HTMLButtonElement>('[data-action="confirm-submit-mock"]')!.click()
+    const result = document.querySelector('[data-question-key="c2-s1-q17"]')!
+    expect(result.querySelector('h3')?.textContent).toContain('並為（未）約定')
+    expect(result.querySelector('[data-annotation-type="typo"]')?.textContent).toContain('考試仍可能沿用原文')
   })
 
   it('模擬考重複題目文字仍依唯一 key 展開被點擊題目的詳解', () => {

@@ -1,7 +1,8 @@
-import { readFileSync } from 'node:fs'
+import { existsSync, readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { questionKey, validateQuestionBank } from '../../src/lib/questions'
+import { ignoredQuestionKeys, questionAnnotationMap, validateQuestionAnnotations } from '../../src/lib/question-annotations'
 
 const read = (relativePath: string) => readFileSync(resolve(process.cwd(), relativePath), 'utf8')
 
@@ -38,5 +39,28 @@ describe('corrected 題庫來源不變性', () => {
       options: question.options,
       answer: question.answer,
     })))
+  })
+
+  it('共用註記只標記指定三題，且同時符合兩種題庫', () => {
+    const annotationPath = resolve(process.cwd(), 'public/data/question_annotations.json')
+    expect(existsSync(annotationPath)).toBe(true)
+
+    const raw = JSON.parse(readFileSync(annotationPath, 'utf8'))
+    const withLaw = validateQuestionBank(JSON.parse(banks.withLawSource))
+    const withoutLaw = validateQuestionBank(JSON.parse(banks.withoutLawSource))
+    const withLawAnnotations = validateQuestionAnnotations(raw, withLaw)
+    const withoutLawAnnotations = validateQuestionAnnotations(raw, withoutLaw)
+
+    expect(withoutLawAnnotations).toEqual(withLawAnnotations)
+    expect(withLawAnnotations.annotations.map((annotation) => annotation.question_key)).toEqual([
+      'c2-s1-q5',
+      'c2-s1-q17',
+      'c2-s1-q23',
+    ])
+    expect([...ignoredQuestionKeys(withLawAnnotations)]).toEqual(['c2-s1-q5', 'c2-s1-q23'])
+    expect(questionAnnotationMap(withLawAnnotations).get('c2-s1-q17')).toMatchObject({
+      type: 'typo',
+      question_replacement: { from: '並為約定', to: '並為（未）約定' },
+    })
   })
 })

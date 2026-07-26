@@ -8,6 +8,7 @@ const wrongPath = '/wrong/'
 const aboutPath = '/about/'
 const withLawUrl = '/data/questions_with_law.json'
 const withoutLawUrl = '/data/questions_without_law.json'
+const annotationsUrl = '/data/question_annotations.json'
 
 async function openPrimaryNavigation(page: import('@playwright/test').Page): Promise<void> {
   const menu = page.locator('[data-action="toggle-mobile-menu"]')
@@ -249,20 +250,20 @@ test('錯題回顧使用獨立路由並可啟動錯題練習', async ({ page }) 
 })
 
 async function chooseQuestionBank(page: import('@playwright/test').Page, label: string, expectedUrl: string): Promise<void> {
-  const bankRequests: string[] = []
+  const dataRequests: string[] = []
   page.on('request', (request) => {
-    if (request.url().includes('/data/questions_')) bankRequests.push(new URL(request.url()).pathname)
+    if (request.url().includes('/data/')) dataRequests.push(new URL(request.url()).pathname)
   })
   await page.getByRole('button', { name: label }).click()
   await expect(page.getByRole('link', { name: '返回入口' })).toBeVisible()
   await expect(page.locator('[data-question-key]')).toBeVisible()
-  await expect.poll(() => bankRequests).toEqual([expectedUrl])
+  await expect.poll(() => [...dataRequests].sort()).toEqual([annotationsUrl, expectedUrl].sort())
 }
 
 test('首次進入先選擇題庫，不會自動載入 JSON', async ({ page }) => {
-  const bankRequests: string[] = []
+  const dataRequests: string[] = []
   page.on('request', (request) => {
-    if (request.url().includes('/data/questions_')) bankRequests.push(new URL(request.url()).pathname)
+    if (request.url().includes('/data/')) dataRequests.push(new URL(request.url()).pathname)
   })
 
   await page.goto(homePath)
@@ -272,7 +273,7 @@ test('首次進入先選擇題庫，不會自動載入 JSON', async ({ page }) =
   await expect(page.getByRole('button', { name: '只有答案題庫' })).toBeVisible()
   await expect(page.getByRole('button', { name: '有詳解題庫' })).toHaveCSS('min-height', '52px')
   await expect(page.getByRole('button', { name: '只有答案題庫' })).toHaveCSS('min-height', '52px')
-  expect(bankRequests).toEqual([])
+  expect(dataRequests).toEqual([])
 })
 
 test('入口顯示來源摘要、練習用途聲明與 About 入口', async ({ page }) => {
@@ -296,6 +297,7 @@ test('About 集中顯示資料來源、免責聲明與模擬考規則', async ({
   await expect(page.getByText('本網站僅供個人學習與測驗練習使用')).toBeVisible()
   await expect(page.getByText('不得作為法律意見或專業服務之替代')).toBeVisible()
   await expect(page.getByText('第 1 至第 10 章，每章各隨機抽取 10 題，共 100 題')).toBeVisible()
+  await expect(page.getByText('經實際課程註記為「可忽略」的題目，不納入模擬考抽題。')).toBeVisible()
   await expect(page.getByText('每次開始模擬考都會重新抽題')).toBeVisible()
   await expect(page.getByText('作答時間為 120 分鐘')).toBeVisible()
 
@@ -328,6 +330,12 @@ test('網站固定由根目錄提供入口與靜態資源', async ({ page, reque
   expect(resourcePaths.every((path) => path.startsWith('/'))).toBe(true)
 })
 
+test('Service Worker precache 包含共用題目註記', async ({ request }) => {
+  const response = await request.get('/sw.js')
+  expect(response.ok()).toBe(true)
+  expect(await response.text()).toContain('question_annotations.json')
+})
+
 test('選擇有詳解題庫後只載入對應 JSON', async ({ page }) => {
   await page.goto(homePath)
   await chooseQuestionBank(page, '有詳解題庫', withLawUrl)
@@ -342,6 +350,51 @@ test('題庫載入失敗後可回到選擇畫面', async ({ page }) => {
   await page.getByRole('link', { name: '返回入口' }).click()
   await expect(page.getByRole('heading', { name: '選擇題庫' })).toBeVisible()
   await expect(page.getByRole('button', { name: '只有答案題庫' })).toBeVisible()
+})
+
+test('題目註記載入失敗時 fail closed', async ({ page }) => {
+  await page.route(`**${annotationsUrl}`, (route) => route.fulfill({ status: 503, body: '暫時無法使用' }))
+  await page.goto(homePath)
+  await page.getByRole('button', { name: '有詳解題庫' }).click()
+
+  await expect(page.getByRole('alert')).toContainText('目前無法載入')
+  await expect(page.locator('[data-question-key]')).toHaveCount(0)
+})
+
+test('章節練習標示可忽略題並以括號補充錯字', async ({ page }) => {
+  await selectBankAtEntry(page)
+  await page.goto(chapterPath)
+  await page.locator('[data-action="chapter-select"]').selectOption('2')
+  await page.locator('[data-action="toggle-settings"]').click()
+  await page.locator('[data-action="chapter-order"]').selectOption('sequential')
+
+  for (let index = 1; index < 5; index += 1) {
+    await page.locator('[data-option]').first().click()
+    await page.locator('[data-action="check-practice"]').click()
+    await page.locator('[data-action="next-practice"]').click()
+  }
+  await expect(page.locator('[data-question-key]')).toHaveAttribute('data-question-key', 'c2-s1-q5')
+  await expect(page.locator('[data-annotation-type="ignore"]')).toContainText('此題可忽略')
+
+  for (let index = 5; index < 17; index += 1) {
+    await page.locator('[data-option]').first().click()
+    await page.locator('[data-action="check-practice"]').click()
+    await page.locator('[data-action="next-practice"]').click()
+  }
+  await expect(page.locator('[data-question-key]')).toHaveAttribute('data-question-key', 'c2-s1-q17')
+  await expect(page.getByRole('heading', { level: 1 })).toContainText('並為（未）約定')
+  await expect(page.locator('[data-annotation-type="typo"]')).toContainText('考試仍可能沿用原文')
+})
+
+test('模擬考 session 不包含可忽略題', async ({ page }) => {
+  await selectBankAtEntry(page)
+  await page.goto(mockPath)
+  await page.getByRole('button', { name: '開始模擬考' }).click()
+
+  const keys = await page.evaluate(() => JSON.parse(localStorage.getItem('rent-exam-session-v1')!).questionKeys as string[])
+  expect(keys).toHaveLength(100)
+  expect(keys).not.toContain('c2-s1-q5')
+  expect(keys).not.toContain('c2-s1-q23')
 })
 
 test('只有答案題庫檢查答案後不提供詳解按鈕', async ({ page }) => {

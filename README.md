@@ -36,7 +36,7 @@ npm run dev
 | `/wrong` | 作答統計、錯題回顧與錯題練習 |
 | `/about` | 題庫來源、模擬考規則與免責聲明 |
 
-題庫選擇保存在目前瀏覽器的 `localStorage`，關閉並重新開啟網站或已安裝的 Web App 後，仍會使用先前選擇的題庫。可隨時由頁首的「更換題庫」返回入口重選。npm
+題庫選擇保存在目前瀏覽器的 `localStorage`，關閉並重新開啟網站或已安裝的 Web App 後，仍會使用先前選擇的題庫。可隨時由頁首的「更換題庫」返回入口重選。
 
 ## 常用指令
 
@@ -89,6 +89,12 @@ npm run preview
 - `public/data/questions_without_law.json`
 
 Runtime 題庫必須與 corrected 原檔逐 byte 相同；`npm test` 會驗證兩份題庫均為 966 題、keys／題目／選項／答案一致，並確認法源欄位只存在於 with-law 版本。
+
+實際課程確認的「可忽略題」與官方題目錯字，統一維護在共用 sidecar：
+
+- `public/data/question_annotations.json`
+
+sidecar 以穩定的 `question_key` 同時對應有詳解與只有答案題庫；`ignore` 題不納入模擬考，但仍保留於全題與章節練習並顯示提示；`typo` 題保留 corrected／Runtime JSON 的官方原文，只在畫面依 `question_replacement` 加上括號修正。PDF converter 不會產生或覆寫這份人工註記。`npm test` 會驗證 key 唯一、替換片段可安全套用，且三題註記同時符合兩套題庫。
 
 `.rebuilt.json` 及其他轉換中間產物只能作為比對候選，不得直接成為網站出題來源。更新題庫時應先逐題檢查與 corrected 的 semantic diff，人工確認後才同步至 `source-data/` 與 `public/data/`。
 

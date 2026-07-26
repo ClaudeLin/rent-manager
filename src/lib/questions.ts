@@ -81,11 +81,16 @@ export function selectQuestions(questions: Question[], options: SelectionOptions
   return [...order(prioritized), ...order(remaining)].slice(0, Math.max(0, Math.min(options.count, candidates.length)))
 }
 
-/** 建立固定題組：十章各十題，題目不足時拒絕建卷。 */
-export function buildMockExam(questions: Question[], rng: () => number = Math.random): Question[] {
+/** 建立固定題組：十章各十題，排除指定 key，題目不足時拒絕建卷。 */
+export function buildMockExam(
+  questions: Question[],
+  rng: () => number = Math.random,
+  excludedKeys: ReadonlySet<string> = new Set(),
+): Question[] {
   const chapters = Array.from({ length: 10 }, (_, index) => index + 1)
   const selected = chapters.flatMap((chapterNo) => {
     const chapterQuestions = filterQuestions(questions, { chapterNo })
+      .filter((question) => !excludedKeys.has(questionKey(question)))
     if (chapterQuestions.length < 10) {
       throw new Error(`第 ${chapterNo} 章題數不足 10 題，無法建立模擬考`)
     }

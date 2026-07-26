@@ -47,6 +47,11 @@ select { width: 100%; max-width: 100%; min-height: 44px; border: 1px solid #a8b8
 .button:hover { background: #105485; }
 .button:disabled { cursor: not-allowed; opacity: .45; }
 .question-card h1, .results h1 { margin: .15rem 0 1.3rem; font-size: clamp(1.25rem, 3vw, 1.75rem); line-height: 1.45; }
+.question-annotation { margin: .75rem 0 1rem; padding: .8rem .9rem; border: 1px solid; border-left-width: 5px; border-radius: 10px; }
+.question-annotation strong { display: block; margin-bottom: .2rem; }
+.question-annotation p { margin: 0; font-size: .9rem; }
+.question-annotation.ignore { color: #684b12; border-color: #d5aa51; background: #fff8e5; }
+.question-annotation.typo { color: #244d70; border-color: #91b6d3; background: #edf6fc; }
 .eyebrow { margin: 0; color: #557088; font-size: .9rem; font-weight: 700; }
 .options { display: grid; gap: .65rem; }
 .option { display: flex; align-items: center; gap: .8rem; width: 100%; padding: .7rem .85rem; color: #233447; border: 1px solid #c9d3dc; background: #fff; text-align: left; }

@@ -7,6 +7,7 @@ import {
   type StoredMockSession,
   type StoredPracticeSession,
 } from '../../src/lib/session'
+import { questionAnnotationsSignature, type QuestionAnnotationsDocument } from '../../src/lib/question-annotations'
 import type { Question } from '../../src/lib/questions'
 
 const question = (chapter: number, number: number): Question => ({
@@ -119,5 +120,35 @@ describe('中斷續作 session contract', () => {
       bankSignature: questionBankSignature(expandedBank),
       questionKeys: [...stored.questionKeys.slice(0, -1), 'c1-s1-q11'],
     }, expandedBank, 'withLaw', 'mock')).toBeNull()
+  })
+
+  it('註記變更或 restored mock 含 ignore 題時拒絕還原', () => {
+    const oldAnnotations: QuestionAnnotationsDocument = {
+      schema_version: 1,
+      updated_at: '2026-07-23',
+      annotations: [{ question_key: 'c2-s1-q5', type: 'ignore', message: '舊註記' }],
+    }
+    const newAnnotations: QuestionAnnotationsDocument = {
+      ...oldAnnotations,
+      annotations: [{ question_key: 'c2-s1-q5', type: 'ignore', message: '新註記' }],
+    }
+    const oldSignature = questionAnnotationsSignature(oldAnnotations)
+    const stored: StoredMockSession = {
+      version: 1,
+      kind: 'mock',
+      bankKey: 'withLaw',
+      bankSignature: questionBankSignature(mockQuestions, oldSignature),
+      view: 'mock',
+      questionKeys: mockQuestions.map((item) => `c${item.chapter_no}-s${item.section_no}-q${item.question_no}`),
+      index: 0,
+      answers: {},
+      attemptId: 'attempt-00000002',
+      startedAt: 5_000,
+      updatedAt: 6_000,
+    }
+
+    expect(hydrateStoredSession(stored, mockQuestions, 'withLaw', 'mock', oldSignature)?.kind).toBe('mock')
+    expect(hydrateStoredSession(stored, mockQuestions, 'withLaw', 'mock', questionAnnotationsSignature(newAnnotations))).toBeNull()
+    expect(hydrateStoredSession(stored, mockQuestions, 'withLaw', 'mock', oldSignature, new Set(['c2-s1-q5']))).toBeNull()
   })
 })
