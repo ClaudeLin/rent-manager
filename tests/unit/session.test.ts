@@ -78,6 +78,28 @@ describe('中斷續作 session contract', () => {
     })
   })
 
+  it('指定章節錯題 session 只接受同章題目，續作摘要保留章節', () => {
+    const wrongSession: StoredPracticeSession = {
+      ...validPractice,
+      view: 'wrong',
+      chapterNo: 1,
+      questionKeys: ['c1-s1-q1', 'c1-s1-q2'],
+      index: 0,
+    }
+
+    expect(hydrateStoredSession(wrongSession, questions, 'withLaw', 'wrong')?.kind).toBe('practice')
+    expect(hydrateStoredSession({
+      ...wrongSession,
+      questionKeys: ['c1-s1-q1', 'c2-s1-q1'],
+    }, questions, 'withLaw', 'wrong')).toBeNull()
+    expect(sessionSummary(wrongSession)).toEqual({
+      bankKey: 'withLaw',
+      route: '/wrong/',
+      title: '第 1 章錯題練習',
+      progress: '第 1 / 2 題',
+    })
+  })
+
   it('還原模擬考題序、答案、目前題號與原始開始時間', () => {
     const stored: StoredMockSession = {
       version: 1,
