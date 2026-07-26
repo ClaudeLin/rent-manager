@@ -389,6 +389,30 @@ describe('租賃題庫操作介面', () => {
     expect(document.body.textContent).toContain('尚無模擬考紀錄')
   })
 
+  it('舊版 history 與進行中的 version 1 模擬考可跨更新 reload 後交卷', () => {
+    localStorage.setItem('rent-exam-history-v1', JSON.stringify({
+      answered: 7,
+      correct: 5,
+      wrongKeys: ['c1-s1-q1'],
+    }))
+    mount(examQuestions, 'mock')
+    document.querySelector<HTMLButtonElement>('[data-action="start-mock"]')!.click()
+    document.querySelector<HTMLButtonElement>('[data-option="B"]')!.click()
+    expect(JSON.parse(localStorage.getItem('rent-exam-session-v1')!).version).toBe(1)
+
+    mount(examQuestions, 'mock')
+    expect(document.body.textContent).toContain('第 1 / 100 題')
+    document.querySelector<HTMLButtonElement>('[data-action="submit-mock"]')!.click()
+    document.querySelector<HTMLButtonElement>('[data-action="confirm-submit-mock"]')!.click()
+
+    const upgraded = JSON.parse(localStorage.getItem('rent-exam-history-v1')!)
+    expect(upgraded.version).toBe(2)
+    expect(upgraded.answered).toBe(8)
+    expect(upgraded.correct).toBe(5)
+    expect(upgraded.wrongKeys).toContain('c1-s1-q1')
+    expect(upgraded.mockAttempts).toHaveLength(1)
+  })
+
   it('同一模擬考 attempt 重送交卷不會重複累計', () => {
     mount(examQuestions, 'mock')
     document.querySelector<HTMLButtonElement>('[data-action="start-mock"]')!.click()

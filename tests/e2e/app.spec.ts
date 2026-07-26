@@ -306,6 +306,27 @@ test('模擬考頁顯示歷史章節分布並可單獨清除結果', async ({ pa
   expect(retained.answered).toBe(200)
 })
 
+test('舊版本機紀錄在更新後可直接使用且不發生頁面錯誤', async ({ page }) => {
+  const errors: string[] = []
+  page.on('pageerror', (error) => errors.push(error.message))
+  await selectBankAtEntry(page)
+  await page.evaluate(() => localStorage.setItem('rent-exam-history-v1', JSON.stringify({
+    answered: 3,
+    correct: 2,
+    wrongKeys: ['c1-s1-q1'],
+  })))
+
+  await page.goto(wrongPath)
+  await expect(page.getByText('累計作答：3')).toBeVisible()
+  await expect(page.getByText('錯題數：1')).toBeVisible()
+  await expect(page.locator('[data-wrong-chapter-summary="1"]')).toContainText('目前錯題 1 題')
+
+  await page.goto(mockPath)
+  await expect(page.getByRole('heading', { name: '120 分鐘模擬考' })).toBeVisible()
+  await expect(page.getByText(/尚無模擬考紀錄/)).toBeVisible()
+  expect(errors).toEqual([])
+})
+
 async function chooseQuestionBank(page: import('@playwright/test').Page, label: string, expectedUrl: string): Promise<void> {
   const dataRequests: string[] = []
   page.on('request', (request) => {

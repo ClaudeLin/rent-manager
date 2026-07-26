@@ -42,6 +42,21 @@ describe('本機學習歷史', () => {
     expect(history.chapterStats).toEqual({})
   })
 
+  it('舊版累計與錯題可在首次新模擬考交卷時無損升級', () => {
+    const legacy = parseHistory({
+      answered: 12,
+      correct: 8,
+      wrongKeys: ['c1-s1-q1'],
+    })
+    const upgraded = recordMockAttempt(legacy, mockAttempt)
+
+    expect(upgraded.version).toBe(2)
+    expect(upgraded.answered).toBe(110)
+    expect(upgraded.correct).toBe(77)
+    expect(upgraded.wrongKeys).toContain('c1-s1-q1')
+    expect(upgraded.mockAttempts).toHaveLength(1)
+  })
+
   it('未知 schema version 採 fail-safe，不誤讀成目前版本', () => {
     expect(parseHistory({
       version: 999,
