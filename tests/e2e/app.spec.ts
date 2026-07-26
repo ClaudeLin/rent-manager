@@ -53,6 +53,90 @@ test('入口選擇題庫後進入全題練習，Header 可返回入口重新選�
   await expect(page.getByRole('heading', { name: '選擇題庫' })).toBeVisible()
 })
 
+test('入口可繼續上次中斷練習，reload 保留檢查狀態且可放棄進度', async ({ page }) => {
+  await page.goto(homePath)
+  await expect(page.getByRole('button', { name: '繼續上次練習' })).toHaveCount(0)
+  await page.getByRole('button', { name: '有詳解題庫' }).click()
+  const key = await page.locator('[data-question-key]').getAttribute('data-question-key')
+  await page.locator('[data-option="B"]').click()
+  await page.locator('[data-action="check-practice"]').click()
+
+  await page.reload()
+  await expect(page.locator('[data-question-key]')).toHaveAttribute('data-question-key', key!)
+  await expect(page.getByText('正確答案：')).toBeVisible()
+
+  await page.goto(homePath)
+  await expect(page.getByRole('button', { name: '繼續上次練習' })).toBeVisible()
+  await expect(page.getByText('全題庫隨機練習')).toBeVisible()
+  await expect(page.getByText(/第 1 \/ \d+ 題/)).toBeVisible()
+  await page.getByRole('button', { name: '繼續上次練習' }).click()
+  await expect(page).toHaveURL(practicePath)
+  await expect(page.locator('[data-question-key]')).toHaveAttribute('data-question-key', key!)
+  await expect(page.getByText('正確答案：')).toBeVisible()
+
+  await page.goto(homePath)
+  await page.getByRole('button', { name: '放棄這次進度' }).click()
+  await expect(page.getByRole('button', { name: '繼續上次練習' })).toHaveCount(0)
+})
+
+test('入口遇到損壞的中斷資料時安全忽略', async ({ page }) => {
+  await page.goto(homePath)
+  await page.evaluate(() => localStorage.setItem('rent-exam-session-v1', '{broken'))
+  await page.reload()
+
+  await expect(page.getByRole('heading', { name: '選擇題庫' })).toBeVisible()
+  await expect(page.getByRole('button', { name: '繼續上次練習' })).toHaveCount(0)
+})
+
+test('手機題目設定可收合，檢查答案後結果留在 viewport', async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name !== 'mobile', '手機 UX 專屬驗證')
+  await selectBankAtEntry(page)
+  const toggle = page.locator('[data-action="toggle-settings"]')
+  await expect(toggle).toHaveAttribute('aria-expanded', 'false')
+  await expect(toggle).toHaveAttribute('aria-label', '展開練習設定')
+  await expect(page.locator('#practice-settings')).toBeHidden()
+  await expect(page.locator('.settings-summary')).toContainText('全題庫・隨機出題')
+
+  await toggle.click()
+  await expect(toggle).toHaveAttribute('aria-expanded', 'true')
+  await expect(page.locator('#practice-settings')).toBeVisible()
+  await page.locator('[data-option="B"]').click()
+  await page.locator('[data-action="check-practice"]').click()
+
+  await expect(toggle).toHaveAttribute('aria-expanded', 'false')
+  await expect(page.locator('#practice-settings')).toBeHidden()
+  const feedback = page.locator('[data-answer-feedback]')
+  await expect(feedback).toBeVisible()
+  const feedbackBox = await feedback.boundingBox()
+  const viewport = page.viewportSize()!
+  expect(feedbackBox).not.toBeNull()
+  expect(feedbackBox!.y).toBeGreaterThanOrEqual(0)
+  expect(feedbackBox!.y + feedbackBox!.height).toBeLessThanOrEqual(viewport.height)
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true)
+})
+
+test('手機主要導覽與模擬考題號均有 44×44 點擊範圍', async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name !== 'mobile', '手機 UX 專屬驗證')
+  await selectBankAtEntry(page)
+  await openPrimaryNavigation(page)
+  for (const link of await page.getByRole('navigation', { name: '主要導覽' }).getByRole('link').all()) {
+    const box = await link.boundingBox()
+    expect(box).not.toBeNull()
+    expect(box!.width).toBeGreaterThanOrEqual(44)
+    expect(box!.height).toBeGreaterThanOrEqual(44)
+  }
+
+  await page.goto(mockPath)
+  await page.getByRole('button', { name: '開始模擬考' }).click()
+  for (const item of await page.locator('[data-exam-index]').all()) {
+    const box = await item.boundingBox()
+    expect(box).not.toBeNull()
+    expect(box!.width).toBeGreaterThanOrEqual(44)
+    expect(box!.height).toBeGreaterThanOrEqual(44)
+  }
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true)
+})
+
 test('章節練習使用獨立路由並在選章後顯示該章題目', async ({ page }) => {
   await selectBankAtEntry(page)
   await openPrimaryNavigation(page)
@@ -66,6 +150,7 @@ test('章節練習使用獨立路由並在選章後顯示該章題目', async ({
   await expect(page.locator('[data-action="start-chapter-practice"]')).toHaveCount(0)
   await expect(page.locator('.control-panel').getByRole('link', { name: '錯題回顧' })).toHaveCount(0)
 
+  await page.locator('[data-action="toggle-settings"]').click()
   await expect(page.locator('[data-action="chapter-order"]')).toHaveValue('random')
   await page.locator('[data-action="chapter-order"]').selectOption('sequential')
   await expect(page.getByText('第 1 章依題號順序練習').first()).toBeVisible()
@@ -79,6 +164,7 @@ test('章節練習使用獨立路由並在選章後顯示該章題目', async ({
   await page.locator('[data-action="toggle-explanation"]').click()
   await expect(page.locator('.explanation')).toBeVisible()
 
+  await page.locator('[data-action="toggle-settings"]').click()
   await page.locator('[data-action="chapter-select"]').selectOption('2')
   await expect(page.getByText('第 2 章依題號順序練習').first()).toBeVisible()
   await expect(page.locator('[data-question-key]')).toHaveAttribute('data-question-key', 'c2-s1-q1')
@@ -106,6 +192,25 @@ test('模擬考使用獨立路由且交卷後可返回練習首頁', async ({ pa
   await page.getByRole('link', { name: '返回練習首頁' }).click()
   await expect(page).toHaveURL(practicePath)
   await expect(page.locator('[data-question-key]')).toBeVisible()
+})
+
+test('模擬考 reload 後保留題序、目前題號、答案與原始倒數', async ({ page }) => {
+  await selectBankAtEntry(page)
+  await page.goto(mockPath)
+  await page.getByRole('button', { name: '開始模擬考' }).click()
+  await page.locator('[data-option="B"]').click()
+  await page.locator('[data-exam-index="49"]').click()
+  await page.waitForTimeout(1_100)
+  const timerBeforeReload = await page.locator('[data-timer]').textContent()
+
+  await page.reload()
+
+  await expect(page.getByText('第 50 / 100 題')).toBeVisible()
+  await page.locator('[data-exam-index="0"]').click()
+  await expect(page.locator('[data-option="B"]')).toHaveAttribute('aria-pressed', 'true')
+  const timerAfterReload = await page.locator('[data-timer]').textContent()
+  expect(timerAfterReload).not.toBe('120:00')
+  expect(timerAfterReload! <= timerBeforeReload!).toBe(true)
 })
 
 test('錯題回顧使用獨立路由並可啟動錯題練習', async ({ page }) => {
