@@ -27,7 +27,7 @@ const examQuestions = Array.from({ length: 10 }, (_, chapter) =>
 
 function mount(questions: Question[] = oneQuestion, initialView: 'practice' | 'chapter' | 'mock' | 'wrong' = 'practice') {
   document.body.innerHTML = '<main id="app"></main>'
-  initRentApp(document.querySelector<HTMLElement>('#app')!, questions, { initialView })
+  initRentApp(document.querySelector<HTMLElement>('#app')!, questions, { initialView, bankKey: 'withLaw' })
 }
 
 afterEach(() => {
@@ -72,6 +72,31 @@ describe('租賃題庫操作介面', () => {
     expect(document.querySelector('[data-option="B"]')!.getAttribute('aria-pressed')).toBe('true')
   })
 
+  it('題目設定可收合與展開，檢查答案後自動收合並保留摘要', () => {
+    mount()
+    let toggle = document.querySelector<HTMLButtonElement>('[data-action="toggle-settings"]')!
+    let settings = document.querySelector<HTMLElement>('#practice-settings')!
+    expect(toggle.tagName).toBe('BUTTON')
+    expect(toggle.getAttribute('aria-expanded')).toBe('false')
+    expect(toggle.getAttribute('aria-controls')).toBe('practice-settings')
+    expect(toggle.getAttribute('aria-label')).toBe('展開練習設定')
+    expect(settings.hidden).toBe(true)
+    expect(document.querySelector('.settings-summary')!.textContent).toContain('全題庫・隨機出題')
+
+    toggle.click()
+    toggle = document.querySelector<HTMLButtonElement>('[data-action="toggle-settings"]')!
+    settings = document.querySelector<HTMLElement>('#practice-settings')!
+    expect(toggle.getAttribute('aria-expanded')).toBe('true')
+    expect(toggle.getAttribute('aria-label')).toBe('收合練習設定')
+    expect(settings.hidden).toBe(false)
+
+    document.querySelector<HTMLButtonElement>('[data-option="B"]')!.click()
+    document.querySelector<HTMLButtonElement>('[data-action="check-practice"]')!.click()
+    expect(document.querySelector<HTMLButtonElement>('[data-action="toggle-settings"]')!.getAttribute('aria-expanded')).toBe('false')
+    expect(document.querySelector<HTMLElement>('#practice-settings')!.hidden).toBe(true)
+    expect(document.querySelector('[data-answer-feedback]')).not.toBeNull()
+  })
+
   it('Practice 作答前不洩漏答案，檢查後先隱藏法源，主動展開才顯示並記錄統計', () => {
     mount()
     expect(document.body.textContent).not.toContain('正確答案：A')
@@ -84,6 +109,25 @@ describe('租賃題庫操作介面', () => {
     document.querySelector<HTMLButtonElement>('[data-action="toggle-explanation"]')!.click()
     expect(document.body.textContent).not.toContain('法源 1-1')
     expect(JSON.parse(localStorage.getItem('rent-exam-history-v1')!).wrongKeys).toContain('c1-s1-q1')
+  })
+
+  it('Practice reload 後還原同一題、答案、檢查與詳解狀態且不重複累計', () => {
+    mount([question(1, 1), question(1, 2)])
+    const key = document.querySelector<HTMLElement>('[data-question-key]')!.dataset.questionKey
+    document.querySelector<HTMLButtonElement>('[data-option="B"]')!.click()
+    document.querySelector<HTMLButtonElement>('[data-action="check-practice"]')!.click()
+    document.querySelector<HTMLButtonElement>('[data-action="toggle-explanation"]')!.click()
+
+    expect(localStorage.getItem('rent-exam-session-v1')).not.toBeNull()
+    expect(JSON.parse(localStorage.getItem('rent-exam-history-v1')!).answered).toBe(1)
+
+    mount([question(1, 1), question(1, 2)])
+
+    expect(document.querySelector<HTMLElement>('[data-question-key]')!.dataset.questionKey).toBe(key)
+    expect(document.querySelector('[data-option="B"]')!.classList.contains('is-wrong')).toBe(true)
+    expect(document.body.textContent).toContain('正確答案：A')
+    expect(document.body.textContent).toContain('法源')
+    expect(JSON.parse(localStorage.getItem('rent-exam-history-v1')!).answered).toBe(1)
   })
 
   it('章節選單 onchange 立即載入新章題目，且不顯示重複操作與錯題回顧按鈕', () => {
@@ -224,6 +268,23 @@ describe('租賃題庫操作介面', () => {
     expect(history.wrongKeys).toContain(firstKey)
   })
 
+  it('同一模擬考 attempt 重送交卷不會重複累計', () => {
+    mount(examQuestions, 'mock')
+    document.querySelector<HTMLButtonElement>('[data-action="start-mock"]')!.click()
+    document.querySelector<HTMLButtonElement>('[data-option="B"]')!.click()
+    const activeAttempt = localStorage.getItem('rent-exam-session-v1')!
+    document.querySelector<HTMLButtonElement>('[data-action="submit-mock"]')!.click()
+    document.querySelector<HTMLButtonElement>('[data-action="confirm-submit-mock"]')!.click()
+    expect(JSON.parse(localStorage.getItem('rent-exam-history-v1')!).answered).toBe(1)
+
+    localStorage.setItem('rent-exam-session-v1', activeAttempt)
+    mount(examQuestions, 'mock')
+    document.querySelector<HTMLButtonElement>('[data-action="submit-mock"]')!.click()
+    document.querySelector<HTMLButtonElement>('[data-action="confirm-submit-mock"]')!.click()
+
+    expect(JSON.parse(localStorage.getItem('rent-exam-history-v1')!).answered).toBe(1)
+  })
+
   it('倒數時間到會自動交卷', () => {
     vi.useFakeTimers()
     mount(examQuestions, 'mock')
@@ -240,6 +301,8 @@ describe('租賃題庫操作介面', () => {
     document.querySelector<HTMLButtonElement>('[data-action="practice-wrongs"]')!.click()
     expect(document.body.textContent).toContain('錯題練習')
     mount(oneQuestion, 'wrong')
+    expect(document.body.textContent).toContain('錯題練習')
+    document.querySelector<HTMLButtonElement>('[data-action="return-wrong-review"]')!.click()
     document.querySelector<HTMLButtonElement>('[data-action="reset-history"]')!.click()
     expect(document.body.textContent).toContain('累計作答：0')
   })

@@ -59,7 +59,7 @@ export async function bootstrapExamPage(root: HTMLElement, initialView: ExamView
   try {
     const response = await fetch(bank.path)
     if (!response.ok) throw new Error(`題庫讀取失敗（${response.status}）`)
-    initRentApp(root, validateQuestionBank(await response.json()), { routes, bankLabel: bank.label, initialView })
+    initRentApp(root, validateQuestionBank(await response.json()), { routes, bankLabel: bank.label, bankKey, initialView })
   } catch (error) {
     const message = error instanceof Error ? error.message : '未知錯誤'
     root.innerHTML = `<section class="load-error"><p role="alert">${escapeHtml(bank.label)}目前無法載入：${escapeHtml(message)}</p><a class="button" href="${routes.home}">返回入口</a></section>`

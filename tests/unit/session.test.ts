@@ -1,0 +1,123 @@
+import { describe, expect, it } from 'vitest'
+import {
+  hydrateStoredSession,
+  parseStoredSession,
+  questionBankSignature,
+  sessionSummary,
+  type StoredMockSession,
+  type StoredPracticeSession,
+} from '../../src/lib/session'
+import type { Question } from '../../src/lib/questions'
+
+const question = (chapter: number, number: number): Question => ({
+  chapter_no: chapter,
+  chapter_code: `第${chapter}章`,
+  chapter_title: `章節${chapter}`,
+  section_no: 1,
+  section_code: '一',
+  section_title: '總則',
+  question_no: number,
+  question: `第 ${chapter}-${number} 題？`,
+  options: [
+    { id: 'A', text: '正確' },
+    { id: 'B', text: '錯誤' },
+  ],
+  answer: 'A',
+})
+
+const questions = [question(1, 1), question(1, 2), question(2, 1)]
+const signature = questionBankSignature(questions)
+const mockQuestions = Array.from({ length: 10 }, (_, chapter) =>
+  Array.from({ length: 10 }, (_, index) => question(chapter + 1, index + 1)),
+).flat()
+const validPractice: StoredPracticeSession = {
+  version: 1,
+  kind: 'practice',
+  bankKey: 'withLaw',
+  bankSignature: signature,
+  view: 'chapter',
+  questionKeys: ['c1-s1-q2', 'c1-s1-q1'],
+  index: 1,
+  selectedAnswer: 'B',
+  checked: true,
+  explanationOpen: false,
+  chapterNo: 1,
+  chapterOrder: 'sequential',
+  settingsCollapsed: true,
+  updatedAt: 1_000,
+}
+
+describe('中斷續作 session contract', () => {
+  it('以 stable key 還原題目順序與目前作答狀態', () => {
+    const restored = hydrateStoredSession(validPractice, questions, 'withLaw', 'chapter')
+
+    expect(restored?.kind).toBe('practice')
+    if (!restored || restored.kind !== 'practice') throw new Error('Expected practice session')
+    expect(restored.questions.map((item) => item.question_no)).toEqual([2, 1])
+    expect(restored.index).toBe(1)
+    expect(restored.selectedAnswer).toBe('B')
+    expect(restored.checked).toBe(true)
+  })
+
+  it('拒絕版本、題庫、signature、題目 key、index 或答案不合法的資料', () => {
+    expect(parseStoredSession({ ...validPractice, version: 2 })).toBeNull()
+    expect(hydrateStoredSession(validPractice, questions, 'withoutLaw', 'chapter')).toBeNull()
+    expect(hydrateStoredSession({ ...validPractice, bankSignature: 'stale' }, questions, 'withLaw', 'chapter')).toBeNull()
+    expect(hydrateStoredSession({ ...validPractice, questionKeys: ['c1-s1-q99'] }, questions, 'withLaw', 'chapter')).toBeNull()
+    expect(hydrateStoredSession({ ...validPractice, index: 2 }, questions, 'withLaw', 'chapter')).toBeNull()
+    expect(parseStoredSession({ ...validPractice, selectedAnswer: 'Z' })).toBeNull()
+  })
+
+  it('產生入口可使用且不含任意網址的續作摘要', () => {
+    expect(sessionSummary(validPractice)).toEqual({
+      bankKey: 'withLaw',
+      route: '/practice/chapter/',
+      title: '第 1 章依題號順序練習',
+      progress: '第 2 / 2 題',
+    })
+  })
+
+  it('還原模擬考題序、答案、目前題號與原始開始時間', () => {
+    const stored: StoredMockSession = {
+      version: 1,
+      kind: 'mock',
+      bankKey: 'withLaw',
+      bankSignature: questionBankSignature(mockQuestions),
+      view: 'mock',
+      questionKeys: mockQuestions.map((item) => `c${item.chapter_no}-s${item.section_no}-q${item.question_no}`),
+      index: 49,
+      answers: { 'c1-s1-q1': 'B' },
+      attemptId: 'attempt-00000001',
+      startedAt: 5_000,
+      updatedAt: 6_000,
+    }
+
+    const restored = hydrateStoredSession(stored, mockQuestions, 'withLaw', 'mock')
+    expect(restored?.kind).toBe('mock')
+    if (!restored || restored.kind !== 'mock') throw new Error('Expected mock session')
+    expect(restored.questions).toHaveLength(100)
+    expect(restored.index).toBe(49)
+    expect(restored.answers).toEqual({ 'c1-s1-q1': 'B' })
+    expect(restored.attemptId).toBe('attempt-00000001')
+    expect(restored.startedAt).toBe(5_000)
+    expect(sessionSummary(stored)).toEqual({
+      bankKey: 'withLaw',
+      route: '/mock/',
+      title: '120 分鐘模擬考',
+      progress: '第 50 / 100 題',
+    })
+
+    expect(hydrateStoredSession({
+      ...stored,
+      startedAt: Date.now() + 1_000,
+      updatedAt: Date.now() + 1_000,
+    }, mockQuestions, 'withLaw', 'mock')).toBeNull()
+
+    const expandedBank = [...mockQuestions, question(1, 11)]
+    expect(hydrateStoredSession({
+      ...stored,
+      bankSignature: questionBankSignature(expandedBank),
+      questionKeys: [...stored.questionKeys.slice(0, -1), 'c1-s1-q11'],
+    }, expandedBank, 'withLaw', 'mock')).toBeNull()
+  })
+})
