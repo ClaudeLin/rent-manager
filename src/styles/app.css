@@ -126,7 +126,8 @@ dl { display: grid; grid-template-columns: 1fr auto; gap: .6rem; } dt, dd { marg
 .offline-toast-dismiss { display: grid; place-items: center; width: 44px; min-height: 44px; padding: 0; color: currentColor; border: 0; border-radius: 9px; background: transparent; font-size: 1.5rem; line-height: 1; }
 .offline-toast-dismiss:hover { background: #d8f1e1; }
 .offline-toast-progress { position: absolute; right: 0; bottom: 0; left: 0; height: 3px; background: #258252; transform-origin: left; }
-.offline-toast[data-state='ready'] .offline-toast-progress { animation: offline-toast-countdown var(--offline-toast-duration, 3s) linear forwards; }
+.offline-toast[data-state='ready'] .offline-toast-progress,
+.offline-toast[data-state='updated'] .offline-toast-progress { animation: offline-toast-countdown var(--offline-toast-duration, 3s) linear forwards; }
 .offline-toast[data-state='failed'] { color: #7d2828; border-color: #e0abab; background: #fff2f1; }
 .offline-toast[data-state='failed'] .offline-toast-icon { background: #b74444; }
 .offline-toast[data-state='failed'] .offline-toast-progress, .offline-toast[data-state='unsupported'] .offline-toast-progress { display: none; }

@@ -82,7 +82,7 @@ import '../styles/app.css'
     document.querySelector<HTMLElement>('[data-offline-notice]')
 
   void registerServiceWorker().then((status) => {
-    if (offlineNotice) showOfflineNotice(offlineNotice, status)
+    if (offlineNotice && status !== 'existing') showOfflineNotice(offlineNotice, status)
   })
 </script>
   </body>
