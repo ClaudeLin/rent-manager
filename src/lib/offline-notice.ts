@@ -1,11 +1,17 @@
 import type { ServiceWorkerStatus } from './pwa'
 
+type OfflineNoticeStatus = Exclude<ServiceWorkerStatus, 'existing'>
+
 const timers = new WeakMap<HTMLElement, ReturnType<typeof setTimeout>>()
 
-const content: Record<ServiceWorkerStatus, { icon: string; message: string }> = {
+const content: Record<OfflineNoticeStatus, { icon: string; message: string }> = {
   ready: {
     icon: '✓',
     message: '離線資料已準備完成，可加入手機主畫面捷徑後離線使用。',
+  },
+  updated: {
+    icon: '✓',
+    message: '新版離線資料已更新完成。',
   },
   unsupported: {
     icon: 'i',
@@ -25,7 +31,7 @@ export function dismissOfflineNotice(notice: HTMLElement): void {
   notice.hidden = true
 }
 
-export function showOfflineNotice(notice: HTMLElement, status: ServiceWorkerStatus, durationMs = 3_000): void {
+export function showOfflineNotice(notice: HTMLElement, status: OfflineNoticeStatus, durationMs = 3_000): void {
   const previousTimer = timers.get(notice)
   if (previousTimer !== undefined) clearTimeout(previousTimer)
   timers.delete(notice)
@@ -39,7 +45,7 @@ export function showOfflineNotice(notice: HTMLElement, status: ServiceWorkerStat
   notice.hidden = false
   notice.classList.add('is-visible')
 
-  if (status === 'ready') {
+  if (status === 'ready' || status === 'updated') {
     const timer = setTimeout(() => dismissOfflineNotice(notice), durationMs)
     timers.set(notice, timer)
   }

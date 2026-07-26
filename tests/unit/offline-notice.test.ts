@@ -50,4 +50,17 @@ describe('離線狀態提示', () => {
     notice.querySelector<HTMLButtonElement>('[data-dismiss-offline]')!.click()
     expect(notice.hidden).toBe(true)
   })
+
+  it('新版離線資料完成安裝時顯示更新提示並自動關閉', () => {
+    vi.useFakeTimers()
+    const notice = createNotice()
+
+    showOfflineNotice(notice, 'updated', 3_000)
+
+    expect(notice.hidden).toBe(false)
+    expect(notice.querySelector('[data-offline-message]')!.textContent)
+      .toBe('新版離線資料已更新完成。')
+    vi.advanceTimersByTime(3_000)
+    expect(notice.hidden).toBe(true)
+  })
 })

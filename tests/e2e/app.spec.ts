@@ -88,6 +88,23 @@ test('入口遇到損壞的中斷資料時安全忽略', async ({ page }) => {
   await expect(page.getByRole('button', { name: '繼續上次練習' })).toHaveCount(0)
 })
 
+test('新版離線資料提示使用同步的三秒倒數進度條', async ({ page }) => {
+  await page.goto(homePath)
+  const notice = page.locator('[data-offline-notice]')
+  await expect(notice).not.toHaveAttribute('data-state', 'preparing')
+  await notice.evaluate((element) => {
+    const toast = element as HTMLElement
+    toast.hidden = false
+    toast.dataset.state = 'updated'
+    toast.style.setProperty('--offline-toast-duration', '3000ms')
+    toast.classList.add('is-visible')
+  })
+
+  const progress = notice.locator('.offline-toast-progress')
+  await expect(progress).toHaveCSS('animation-duration', '3s')
+  await expect(progress).not.toHaveCSS('animation-name', 'none')
+})
+
 test('手機題目設定可收合，檢查答案後結果留在 viewport', async ({ page }, testInfo) => {
   test.skip(testInfo.project.name !== 'mobile', '手機 UX 專屬驗證')
   await selectBankAtEntry(page)
