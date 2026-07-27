@@ -361,6 +361,58 @@ describe('租賃題庫操作介面', () => {
     expect(history.wrongKeys).toContain(firstKey)
   })
 
+  it('模擬考只保存結果分布摘要，重新進入可查看並單獨清除紀錄', () => {
+    mount(examQuestions, 'mock')
+    document.querySelector<HTMLButtonElement>('[data-action="start-mock"]')!.click()
+    document.querySelector<HTMLButtonElement>('[data-option="B"]')!.click()
+    document.querySelector<HTMLButtonElement>('[data-action="submit-mock"]')!.click()
+    document.querySelector<HTMLButtonElement>('[data-action="confirm-submit-mock"]')!.click()
+
+    const saved = JSON.parse(localStorage.getItem('rent-exam-history-v1')!)
+    expect(saved.mockAttempts).toHaveLength(1)
+    expect(saved.mockAttempts[0]).toMatchObject({ correct: 0, total: 100 })
+    expect(saved.mockAttempts[0].chapters).toHaveLength(10)
+    expect(saved.mockAttempts[0]).not.toHaveProperty('questionKeys')
+
+    mount(examQuestions, 'mock')
+    expect(document.body.textContent).toContain('歷史模擬考表現')
+    expect(document.body.textContent).toContain('共 1 次模擬考')
+    expect(document.body.textContent).toContain('第 1 章')
+    expect(document.querySelector<HTMLProgressElement>('[data-mock-chapter-rate="1"]')?.max).toBe(100)
+    document.querySelector<HTMLButtonElement>('[data-action="clear-mock-history"]')!.click()
+    expect(document.body.textContent).toContain('確定清除所有模擬考結果分布')
+    document.querySelector<HTMLButtonElement>('[data-action="confirm-clear-mock-history"]')!.click()
+
+    const cleared = JSON.parse(localStorage.getItem('rent-exam-history-v1')!)
+    expect(cleared.mockAttempts).toEqual([])
+    expect(cleared.wrongKeys).toHaveLength(1)
+    expect(document.body.textContent).toContain('尚無模擬考紀錄')
+  })
+
+  it('舊版 history 與進行中的 version 1 模擬考可跨更新 reload 後交卷', () => {
+    localStorage.setItem('rent-exam-history-v1', JSON.stringify({
+      answered: 7,
+      correct: 5,
+      wrongKeys: ['c1-s1-q1'],
+    }))
+    mount(examQuestions, 'mock')
+    document.querySelector<HTMLButtonElement>('[data-action="start-mock"]')!.click()
+    document.querySelector<HTMLButtonElement>('[data-option="B"]')!.click()
+    expect(JSON.parse(localStorage.getItem('rent-exam-session-v1')!).version).toBe(1)
+
+    mount(examQuestions, 'mock')
+    expect(document.body.textContent).toContain('第 1 / 100 題')
+    document.querySelector<HTMLButtonElement>('[data-action="submit-mock"]')!.click()
+    document.querySelector<HTMLButtonElement>('[data-action="confirm-submit-mock"]')!.click()
+
+    const upgraded = JSON.parse(localStorage.getItem('rent-exam-history-v1')!)
+    expect(upgraded.version).toBe(2)
+    expect(upgraded.answered).toBe(8)
+    expect(upgraded.correct).toBe(5)
+    expect(upgraded.wrongKeys).toContain('c1-s1-q1')
+    expect(upgraded.mockAttempts).toHaveLength(1)
+  })
+
   it('同一模擬考 attempt 重送交卷不會重複累計', () => {
     mount(examQuestions, 'mock')
     document.querySelector<HTMLButtonElement>('[data-action="start-mock"]')!.click()
@@ -400,16 +452,93 @@ describe('租賃題庫操作介面', () => {
     expect(document.body.textContent).toContain('累計作答：0')
   })
 
+  it('錯題回顧顯示每章歷史答錯率與目前錯題，並可練習指定章節', () => {
+    localStorage.setItem('rent-exam-history-v1', JSON.stringify({
+      version: 2,
+      answered: 8,
+      correct: 5,
+      wrongKeys: ['c2-s1-q1', 'c2-s1-q2', 'c3-s1-q1'],
+      recordedExamIds: [],
+      chapterStats: { '2': { answered: 5, correct: 2 }, '3': { answered: 3, correct: 3 } },
+      mockAttempts: [],
+    }))
+    mount(examQuestions, 'wrong')
+
+    const chapterTwo = document.querySelector<HTMLElement>('[data-wrong-chapter-summary="2"]')!
+    expect(chapterTwo.textContent).toContain('歷史答錯率 60%')
+    expect(chapterTwo.textContent).toContain('3 / 5')
+    expect(chapterTwo.textContent).toContain('目前錯題 2 題')
+    expect(chapterTwo.querySelector<HTMLProgressElement>('progress')?.value).toBe(60)
+    document.querySelector<HTMLButtonElement>('[data-wrong-chapter="2"]')!.click()
+
+    expect(document.body.textContent).toContain('第 2 章錯題練習')
+    expect(document.querySelector<HTMLElement>('[data-question-key]')!.dataset.questionKey).toMatch(/^c2-/)
+    expect(document.body.textContent).toContain('第 1 / 2 題')
+  })
+
+  it('目前錯題已解除時不還原過時的錯題練習 session', () => {
+    localStorage.setItem('rent-exam-history-v1', JSON.stringify({
+      version: 2,
+      answered: 1,
+      correct: 0,
+      wrongKeys: ['c1-s1-q1'],
+      recordedExamIds: [],
+      chapterStats: { '1': { answered: 1, correct: 0 } },
+      mockAttempts: [],
+    }))
+    mount(oneQuestion, 'wrong')
+    document.querySelector<HTMLButtonElement>('[data-action="practice-wrongs"]')!.click()
+    expect(document.body.textContent).toContain('錯題練習')
+
+    const history = JSON.parse(localStorage.getItem('rent-exam-history-v1')!)
+    localStorage.setItem('rent-exam-history-v1', JSON.stringify({ ...history, wrongKeys: [] }))
+    mount(oneQuestion, 'wrong')
+
+    expect(document.querySelector('[data-question-key]')).toBeNull()
+    expect(document.body.textContent).toContain('錯題回顧')
+    expect(document.body.textContent).toContain('錯題數：0')
+  })
+
+  it('目前錯題新增時不還原題目集合不完整的全部或指定章節 session', () => {
+    const setWrongKeys = (wrongKeys: string[]) => localStorage.setItem('rent-exam-history-v1', JSON.stringify({
+      version: 2,
+      answered: wrongKeys.length,
+      correct: 0,
+      wrongKeys,
+      recordedExamIds: [],
+      chapterStats: { '1': { answered: wrongKeys.length, correct: 0 } },
+      mockAttempts: [],
+    }))
+
+    setWrongKeys(['c1-s1-q1'])
+    mount(examQuestions, 'wrong')
+    document.querySelector<HTMLButtonElement>('[data-action="practice-wrongs"]')!.click()
+    setWrongKeys(['c1-s1-q1', 'c1-s1-q2'])
+    mount(examQuestions, 'wrong')
+    expect(document.querySelector('[data-question-key]')).toBeNull()
+    expect(document.body.textContent).toContain('錯題數：2')
+
+    setWrongKeys(['c1-s1-q1'])
+    mount(examQuestions, 'wrong')
+    document.querySelector<HTMLButtonElement>('[data-wrong-chapter="1"]')!.click()
+    setWrongKeys(['c1-s1-q1', 'c1-s1-q2'])
+    mount(examQuestions, 'wrong')
+    expect(document.querySelector('[data-question-key]')).toBeNull()
+    expect(document.body.textContent).toContain('錯題數：2')
+  })
+
   it('錯題回顧將損壞的本機統計正規化並去除無效與重複錯題 key', () => {
     localStorage.setItem('rent-exam-history-v1', JSON.stringify({
       answered: -3,
       correct: 99,
-      wrongKeys: ['c1-s1-q1', 'c1-s1-q1', 3, null, '<img>'],
+      wrongKeys: ['c1-s1-q1', 'c1-s1-q1', 'c9-s1-q99', 3, null, '<img>'],
     }))
     mount(oneQuestion, 'wrong')
 
     expect(document.body.textContent).toContain('累計作答：0')
     expect(document.body.textContent).toContain('正確率0%')
     expect(document.body.textContent).toContain('錯題數：1')
+    expect(document.querySelector<HTMLButtonElement>('[data-wrong-chapter="9"]')?.disabled).toBe(true)
+    expect(JSON.parse(localStorage.getItem('rent-exam-history-v1')!).wrongKeys).toEqual(['c1-s1-q1'])
   })
 })

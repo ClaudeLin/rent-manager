@@ -138,6 +138,7 @@ export function hydrateStoredSession(
   if (stored.kind === 'practice') {
     const current = hydratedQuestions[stored.index]
     if (stored.selectedAnswer !== null && !current.options.some((option) => option.id === stored.selectedAnswer)) return null
+    if (stored.view === 'wrong' && stored.chapterNo !== null && hydratedQuestions.some((question) => question.chapter_no !== stored.chapterNo)) return null
     return { ...stored, questions: hydratedQuestions }
   }
 
@@ -182,7 +183,7 @@ export function sessionSummary(session: StoredSession): { bankKey: BankKey; rout
     : session.view === 'chapter'
       ? `第 ${session.chapterNo} 章${session.chapterOrder === 'sequential' ? '依題號順序' : '隨機'}練習`
       : session.view === 'wrong'
-        ? '錯題練習'
+        ? session.chapterNo ? `第 ${session.chapterNo} 章錯題練習` : '錯題練習'
         : '全題庫隨機練習'
   return { bankKey: session.bankKey, route, title, progress: `第 ${session.index + 1} / ${session.questionKeys.length} 題` }
 }

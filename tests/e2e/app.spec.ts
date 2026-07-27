@@ -244,9 +244,87 @@ test('錯題回顧使用獨立路由並可啟動錯題練習', async ({ page }) 
   await expect(page).toHaveURL(wrongPath)
   await expect(page.getByRole('heading', { name: '錯題回顧' })).toBeVisible()
   await expect(page.getByText('錯題數：1')).toBeVisible()
-  await page.getByRole('button', { name: '只練錯題' }).click()
+  await page.getByRole('button', { name: '練習全部錯題' }).click()
   await expect(page.getByText('錯題練習').first()).toBeVisible()
   await expect(page.locator('[data-question-key]')).toBeVisible()
+})
+
+test('錯題回顧顯示各章歷史比例並可練習指定章節錯題', async ({ page }) => {
+  await selectBankAtEntry(page)
+  await page.evaluate(() => localStorage.setItem('rent-exam-history-v1', JSON.stringify({
+    version: 2,
+    answered: 8,
+    correct: 5,
+    wrongKeys: ['c2-s1-q1', 'c2-s1-q2', 'c3-s1-q1'],
+    recordedExamIds: [],
+    chapterStats: { '2': { answered: 5, correct: 2 }, '3': { answered: 3, correct: 3 } },
+    mockAttempts: [],
+  })))
+  await page.goto(wrongPath)
+
+  const chapterTwo = page.locator('[data-wrong-chapter-summary="2"]')
+  await expect(chapterTwo).toContainText('歷史答錯率 60%')
+  await expect(chapterTwo).toContainText('目前錯題 2 題')
+  await chapterTwo.getByRole('button', { name: '練習第 2 章錯題' }).click()
+  await expect(page.getByText('第 2 章錯題練習').first()).toBeVisible()
+  await expect(page.locator('[data-question-key]')).toHaveAttribute('data-question-key', /^c2-/)
+  await expect(page.getByText('第 1 / 2 題')).toBeVisible()
+})
+
+test('模擬考頁顯示歷史章節分布並可單獨清除結果', async ({ page }) => {
+  await selectBankAtEntry(page)
+  await page.evaluate(() => {
+    const chapters = Array.from({ length: 10 }, (_, index) => ({ chapter: index + 1, total: 10, answered: 10, correct: index === 1 ? 6 : 8 }))
+    localStorage.setItem('rent-exam-history-v1', JSON.stringify({
+      version: 2,
+      answered: 200,
+      correct: 158,
+      wrongKeys: ['c2-s1-q1'],
+      recordedExamIds: ['attempt-12345678', 'attempt-abcdefgh'],
+      chapterStats: { '2': { answered: 20, correct: 14 } },
+      mockAttempts: [
+        { attemptId: 'attempt-12345678', completedAt: 1_000, bankKey: 'withLaw', correct: 78, total: 100, chapters },
+        { attemptId: 'attempt-abcdefgh', completedAt: 2_000, bankKey: 'withLaw', correct: 80, total: 100, chapters: chapters.map((chapter) => ({ ...chapter, correct: 8 })) },
+      ],
+    }))
+  })
+  await page.goto(mockPath)
+
+  await expect(page.getByRole('heading', { name: '歷史模擬考表現' })).toBeVisible()
+  await expect(page.getByText('共 2 次模擬考')).toBeVisible()
+  const chapterTwo = page.locator('.history-panel > .performance-grid .performance-card').filter({ hasText: '第 2 章' })
+  await expect(chapterTwo).toContainText('14 / 20 題')
+  await expect(chapterTwo).toContainText('70%')
+  await expect(page.locator('.attempt-card')).toHaveCount(2)
+
+  await page.getByRole('button', { name: '清除模擬考紀錄' }).click()
+  await expect(page.getByText('確定清除所有模擬考結果分布？錯題與累計作答不受影響。')).toBeVisible()
+  await page.getByRole('button', { name: '確認清除' }).click()
+  await expect(page.getByText(/尚無模擬考紀錄/)).toBeVisible()
+  const retained = await page.evaluate(() => JSON.parse(localStorage.getItem('rent-exam-history-v1')!))
+  expect(retained.wrongKeys).toEqual(['c2-s1-q1'])
+  expect(retained.answered).toBe(200)
+})
+
+test('舊版本機紀錄在更新後可直接使用且不發生頁面錯誤', async ({ page }) => {
+  const errors: string[] = []
+  page.on('pageerror', (error) => errors.push(error.message))
+  await selectBankAtEntry(page)
+  await page.evaluate(() => localStorage.setItem('rent-exam-history-v1', JSON.stringify({
+    answered: 3,
+    correct: 2,
+    wrongKeys: ['c1-s1-q1'],
+  })))
+
+  await page.goto(wrongPath)
+  await expect(page.getByText('累計作答：3')).toBeVisible()
+  await expect(page.getByText('錯題數：1')).toBeVisible()
+  await expect(page.locator('[data-wrong-chapter-summary="1"]')).toContainText('目前錯題 1 題')
+
+  await page.goto(mockPath)
+  await expect(page.getByRole('heading', { name: '120 分鐘模擬考' })).toBeVisible()
+  await expect(page.getByText(/尚無模擬考紀錄/)).toBeVisible()
+  expect(errors).toEqual([])
 })
 
 async function chooseQuestionBank(page: import('@playwright/test').Page, label: string, expectedUrl: string): Promise<void> {
