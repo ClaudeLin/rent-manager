@@ -22,6 +22,8 @@ const question = (chapter: number, number: number): Question => ({
   options: [
     { id: 'A', text: '正確' },
     { id: 'B', text: '錯誤' },
+    { id: 'C', text: '選項丙' },
+    { id: 'D', text: '選項丁' },
   ],
   answer: 'A',
 })
@@ -129,6 +131,19 @@ describe('中斷續作 session contract', () => {
       title: '120 分鐘模擬考',
       progress: '第 50 / 100 題',
     })
+
+    const optionOrders = Object.fromEntries(stored.questionKeys.map((key) => [key, ['B', 'C', 'D', 'A']]))
+    const shuffled = hydrateStoredSession({ ...stored, optionOrders }, mockQuestions, 'withLaw', 'mock')
+    expect(shuffled?.kind).toBe('mock')
+    if (!shuffled || shuffled.kind !== 'mock') throw new Error('Expected shuffled mock session')
+    expect(shuffled.optionOrders?.['c1-s1-q1']).toEqual(['B', 'C', 'D', 'A'])
+    expect(shuffled.questions[0].options.map((option) => option.text)).toEqual(['錯誤', '選項丙', '選項丁', '正確'])
+    expect(shuffled.questions[0].answer).toBe('D')
+
+    expect(hydrateStoredSession({
+      ...stored,
+      optionOrders: { 'c1-s1-q1': ['A', 'A', 'C', 'D'] },
+    }, mockQuestions, 'withLaw', 'mock')).toBeNull()
 
     expect(hydrateStoredSession({
       ...stored,

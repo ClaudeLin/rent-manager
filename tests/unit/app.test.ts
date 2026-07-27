@@ -18,7 +18,12 @@ Object.defineProperty(globalThis, 'localStorage', { value: storage, configurable
 const question = (chapter = 1, questionNo = 1): Question => ({
   chapter_no: chapter, chapter_code: `第${chapter}章`, chapter_title: `章節${chapter}`,
   section_no: 1, section_code: '一', section_title: '總則', question_no: questionNo,
-  question: `第 ${chapter}-${questionNo} 題？`, options: [{ id: 'A', text: '正確' }, { id: 'B', text: '錯誤' }],
+  question: `第 ${chapter}-${questionNo} 題？`, options: [
+    { id: 'A', text: '正確' },
+    { id: 'B', text: '錯誤' },
+    { id: 'C', text: '選項丙' },
+    { id: 'D', text: '選項丁' },
+  ],
   answer: 'A', law_reference: `法源 ${chapter}-${questionNo}`,
 })
 
@@ -34,6 +39,13 @@ function mount(
 ) {
   document.body.innerHTML = '<main id="app"></main>'
   initRentApp(document.querySelector<HTMLElement>('#app')!, questions, { initialView, bankKey: 'withLaw', annotations })
+}
+
+function clickOptionByText(text: string): void {
+  const option = [...document.querySelectorAll<HTMLButtonElement>('[data-option]')]
+    .find((button) => button.textContent?.includes(text))
+  if (!option) throw new Error(`Option not found: ${text}`)
+  option.click()
 }
 
 afterEach(() => {
@@ -240,6 +252,7 @@ describe('租賃題庫操作介面', () => {
     mount(examQuestions, 'mock')
     expect(document.body.textContent).toContain('第 1 至第 10 章，每章各隨機抽取 10 題，共 100 題')
     expect(document.body.textContent).toContain('每次開始模擬考都會重新抽題')
+    expect(document.body.textContent).toContain('隨機重排 A、B、C、D 選項，正確答案會同步調整')
     expect(document.body.textContent).toContain('作答時間為 120 分鐘')
     document.querySelector<HTMLButtonElement>('[data-action="start-mock"]')!.click()
     expect(document.querySelectorAll('[data-exam-index]').length).toBe(100)
@@ -256,6 +269,29 @@ describe('租賃題庫操作介面', () => {
     expect(document.body.textContent).not.toContain('法源 1-1')
     document.querySelector<HTMLButtonElement>('[data-action="toggle-result-explanation"]')!.click()
     expect(document.body.textContent).toContain('法源')
+  })
+
+  it('模擬考重排選項與答案，並在 reload 後維持同一排列', () => {
+    vi.spyOn(Math, 'random').mockReturnValue(0)
+    mount(examQuestions, 'mock')
+    document.querySelector<HTMLButtonElement>('[data-action="start-mock"]')!.click()
+
+    const stored = JSON.parse(localStorage.getItem('rent-exam-session-v1')!)
+    const firstKey = stored.questionKeys[0]
+    expect(Object.keys(stored.optionOrders)).toHaveLength(100)
+    expect(stored.optionOrders[firstKey]).toEqual(['B', 'C', 'D', 'A'])
+    const beforeReload = [...document.querySelectorAll<HTMLElement>('[data-option] span')].map((item) => item.textContent)
+    expect(beforeReload).toEqual(['錯誤', '選項丙', '選項丁', '正確'])
+    document.querySelector<HTMLButtonElement>('[data-option="D"]')!.click()
+
+    mount(examQuestions, 'mock')
+    expect([...document.querySelectorAll<HTMLElement>('[data-option] span')].map((item) => item.textContent)).toEqual(beforeReload)
+    expect(document.querySelector('[data-option="D"]')?.getAttribute('aria-pressed')).toBe('true')
+    document.querySelector<HTMLButtonElement>('[data-action="submit-mock"]')!.click()
+    document.querySelector<HTMLButtonElement>('[data-action="confirm-submit-mock"]')!.click()
+    expect(document.body.textContent).toContain('1 / 100 題（1%）')
+    expect(document.body.textContent).toContain('你的答案：D；正確答案：D・✓ 正確')
+    expect(JSON.parse(localStorage.getItem('rent-exam-history-v1')!).correct).toBe(1)
   })
 
   it('模擬考排除 ignore 題，且註記變更會更新 session fingerprint', () => {
@@ -351,7 +387,7 @@ describe('租賃題庫操作介面', () => {
     mount(examQuestions, 'mock')
     document.querySelector<HTMLButtonElement>('[data-action="start-mock"]')!.click()
     const firstKey = document.querySelector('[data-question-key]')!.getAttribute('data-question-key')
-    document.querySelector<HTMLButtonElement>('[data-option="B"]')!.click()
+    clickOptionByText('錯誤')
     document.querySelector<HTMLButtonElement>('[data-action="submit-mock"]')!.click()
     document.querySelector<HTMLButtonElement>('[data-action="confirm-submit-mock"]')!.click()
 
@@ -364,7 +400,7 @@ describe('租賃題庫操作介面', () => {
   it('模擬考只保存結果分布摘要，重新進入可查看並單獨清除紀錄', () => {
     mount(examQuestions, 'mock')
     document.querySelector<HTMLButtonElement>('[data-action="start-mock"]')!.click()
-    document.querySelector<HTMLButtonElement>('[data-option="B"]')!.click()
+    clickOptionByText('錯誤')
     document.querySelector<HTMLButtonElement>('[data-action="submit-mock"]')!.click()
     document.querySelector<HTMLButtonElement>('[data-action="confirm-submit-mock"]')!.click()
 
@@ -397,7 +433,7 @@ describe('租賃題庫操作介面', () => {
     }))
     mount(examQuestions, 'mock')
     document.querySelector<HTMLButtonElement>('[data-action="start-mock"]')!.click()
-    document.querySelector<HTMLButtonElement>('[data-option="B"]')!.click()
+    clickOptionByText('錯誤')
     expect(JSON.parse(localStorage.getItem('rent-exam-session-v1')!).version).toBe(1)
 
     mount(examQuestions, 'mock')
@@ -416,7 +452,7 @@ describe('租賃題庫操作介面', () => {
   it('同一模擬考 attempt 重送交卷不會重複累計', () => {
     mount(examQuestions, 'mock')
     document.querySelector<HTMLButtonElement>('[data-action="start-mock"]')!.click()
-    document.querySelector<HTMLButtonElement>('[data-option="B"]')!.click()
+    clickOptionByText('錯誤')
     const activeAttempt = localStorage.getItem('rent-exam-session-v1')!
     document.querySelector<HTMLButtonElement>('[data-action="submit-mock"]')!.click()
     document.querySelector<HTMLButtonElement>('[data-action="confirm-submit-mock"]')!.click()
