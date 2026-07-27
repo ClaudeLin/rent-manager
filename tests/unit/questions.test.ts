@@ -4,6 +4,7 @@ import {
   filterQuestions,
   questionKey,
   selectQuestions,
+  shuffleQuestionOptions,
   validateQuestionBank,
   type Question,
 } from '../../src/lib/questions'
@@ -59,6 +60,28 @@ describe('題庫 domain', () => {
     const second = selectQuestions(questions, { count: 2, rng }).map(questionKey)
     expect(first).toEqual(second)
     expect(new Set(first).size).toBe(2)
+  })
+
+  it('模擬考重排四個選項並同步映射正確答案，不修改原始題目', () => {
+    const original: Question = {
+      ...questions[0],
+      options: [
+        { id: 'A', text: '甲' },
+        { id: 'B', text: '乙' },
+        { id: 'C', text: '丙' },
+        { id: 'D', text: '丁' },
+      ],
+      answer: 'B',
+    }
+    const shuffled = shuffleQuestionOptions(original, () => 0)
+
+    expect(shuffled.optionOrder).toEqual(['B', 'C', 'D', 'A'])
+    expect(shuffled.question.options.map((option) => option.id)).toEqual(['A', 'B', 'C', 'D'])
+    expect(shuffled.question.options.map((option) => option.text)).toEqual(['乙', '丙', '丁', '甲'])
+    expect(shuffled.question.answer).toBe('A')
+    expect(shuffled.question.options.find((option) => option.id === shuffled.question.answer)?.text).toBe('乙')
+    expect(original.options.map((option) => option.text)).toEqual(['甲', '乙', '丙', '丁'])
+    expect(original.answer).toBe('B')
   })
 
   it('可依章節、節次與題號順序選題', () => {

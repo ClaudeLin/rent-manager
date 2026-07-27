@@ -69,6 +69,34 @@ function shuffle<T>(items: T[], rng: () => number): T[] {
   return copy
 }
 
+const OPTION_LABELS = ['A', 'B', 'C', 'D'] as const
+
+export function applyQuestionOptionOrder(question: Question, optionOrder: string[]): Question {
+  const originalById = new Map(question.options.map((option) => [option.id, option]))
+  if (question.options.length !== OPTION_LABELS.length
+    || OPTION_LABELS.some((id) => !originalById.has(id))
+    || !originalById.has(question.answer)
+    || optionOrder.length !== OPTION_LABELS.length
+    || new Set(optionOrder).size !== OPTION_LABELS.length
+    || optionOrder.some((id) => !originalById.has(id))) {
+    throw new Error('模擬考題目必須包含 A、B、C、D 四個有效選項')
+  }
+  const answerIndex = optionOrder.indexOf(question.answer)
+  const options = optionOrder.map((originalId, index) => ({
+    ...originalById.get(originalId)!,
+    id: OPTION_LABELS[index],
+  }))
+  return { ...question, options, answer: OPTION_LABELS[answerIndex] }
+}
+
+export function shuffleQuestionOptions(question: Question, rng: () => number = Math.random): { question: Question; optionOrder: string[] } {
+  const optionOrder = shuffle([...OPTION_LABELS], rng)
+  return {
+    question: applyQuestionOptionOrder(question, optionOrder),
+    optionOrder,
+  }
+}
+
 export function selectQuestions(questions: Question[], options: SelectionOptions): Question[] {
   const candidates = filterQuestions(questions, options)
   const random = options.rng ?? Math.random
