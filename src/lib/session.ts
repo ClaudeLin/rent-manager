@@ -1,4 +1,4 @@
-import { questionKey, type Question } from './questions'
+import { applyQuestionOptionOrder, questionKey, type Question } from './questions'
 
 export const PRACTICE_SESSION_KEY = 'rent-exam-session-v1'
 
@@ -30,6 +30,7 @@ export interface StoredMockSession extends StoredSessionBase {
   kind: 'mock'
   view: 'mock'
   answers: Record<string, string>
+  optionOrders?: Record<string, string[]>
   attemptId: string
   startedAt: number
 }
@@ -110,7 +111,19 @@ export function parseStoredSession(value: unknown): StoredSession | null {
     if (value.view !== 'mock' || base.questionKeys.length !== 100 || !isAttemptId(value.attemptId) || !isSafeInteger(value.startedAt) || value.startedAt === 0 || !isRecord(value.answers)) return null
     const entries = Object.entries(value.answers)
     if (entries.some(([key, answer]) => !base.questionKeys.includes(key) || !isAnswer(answer))) return null
-    return { ...base, kind: 'mock', view: 'mock', answers: Object.fromEntries(entries) as Record<string, string>, attemptId: value.attemptId, startedAt: value.startedAt }
+    let optionOrders: Record<string, string[]> | undefined
+    if (value.optionOrders !== undefined) {
+      if (!isRecord(value.optionOrders)) return null
+      const optionEntries = Object.entries(value.optionOrders)
+      if (optionEntries.length !== base.questionKeys.length
+        || optionEntries.some(([key, order]) => !base.questionKeys.includes(key)
+          || !Array.isArray(order)
+          || order.length !== 4
+          || new Set(order).size !== 4
+          || !order.every(isAnswer))) return null
+      optionOrders = Object.fromEntries(optionEntries) as Record<string, string[]>
+    }
+    return { ...base, kind: 'mock', view: 'mock', answers: Object.fromEntries(entries) as Record<string, string>, optionOrders, attemptId: value.attemptId, startedAt: value.startedAt }
   }
 
   return null
@@ -133,7 +146,7 @@ export function hydrateStoredSession(
   const byKey = new Map(questions.map((question) => [questionKey(question), question]))
   const restoredQuestions = stored.questionKeys.map((key) => byKey.get(key))
   if (restoredQuestions.some((question) => !question)) return null
-  const hydratedQuestions = restoredQuestions as Question[]
+  let hydratedQuestions = restoredQuestions as Question[]
 
   if (stored.kind === 'practice') {
     const current = hydratedQuestions[stored.index]
@@ -142,8 +155,16 @@ export function hydrateStoredSession(
     return { ...stored, questions: hydratedQuestions }
   }
 
+  if (stored.optionOrders) {
+    try {
+      hydratedQuestions = hydratedQuestions.map((question) => applyQuestionOptionOrder(question, stored.optionOrders![questionKey(question)]))
+    } catch {
+      return null
+    }
+  }
+
   for (const [key, answer] of Object.entries(stored.answers)) {
-    const question = byKey.get(key)
+    const question = hydratedQuestions.find((item) => questionKey(item) === key)
     if (!question || !question.options.some((option) => option.id === answer)) return null
   }
   const chapterCounts = Array.from({ length: 10 }, (_, index) => index + 1)

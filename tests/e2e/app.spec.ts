@@ -212,10 +212,14 @@ test('模擬考使用獨立路由且交卷後可返回練習首頁', async ({ pa
   await expect(page.locator('[data-question-key]')).toBeVisible()
 })
 
-test('模擬考 reload 後保留題序、目前題號、答案與原始倒數', async ({ page }) => {
+test('模擬考 reload 後保留題序、選項排列、目前題號、答案與原始倒數', async ({ page }) => {
   await selectBankAtEntry(page)
   await page.goto(mockPath)
   await page.getByRole('button', { name: '開始模擬考' }).click()
+  const firstOptionTexts = await page.locator('[data-option] span').allTextContents()
+  const stored = await page.evaluate(() => JSON.parse(localStorage.getItem('rent-exam-session-v1')!))
+  expect(Object.keys(stored.optionOrders)).toHaveLength(100)
+  expect(stored.optionOrders[stored.questionKeys[0]]).toHaveLength(4)
   await page.locator('[data-option="B"]').click()
   await page.locator('[data-exam-index="49"]').click()
   await page.waitForTimeout(1_100)
@@ -226,6 +230,9 @@ test('模擬考 reload 後保留題序、目前題號、答案與原始倒數', 
   await expect(page.getByText('第 50 / 100 題')).toBeVisible()
   await page.locator('[data-exam-index="0"]').click()
   await expect(page.locator('[data-option="B"]')).toHaveAttribute('aria-pressed', 'true')
+  expect(await page.locator('[data-option] span').allTextContents()).toEqual(firstOptionTexts)
+  const restored = await page.evaluate(() => JSON.parse(localStorage.getItem('rent-exam-session-v1')!))
+  expect(restored.optionOrders).toEqual(stored.optionOrders)
   const timerAfterReload = await page.locator('[data-timer]').textContent()
   expect(timerAfterReload).not.toBe('120:00')
   expect(timerAfterReload! <= timerBeforeReload!).toBe(true)

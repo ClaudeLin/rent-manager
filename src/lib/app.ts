@@ -1,4 +1,4 @@
-import { buildMockExam, questionKey, selectQuestions, type Question } from './questions'
+import { buildMockExam, questionKey, selectQuestions, shuffleQuestionOptions, type Question } from './questions'
 import { annotateQuestionText, ignoredQuestionKeys, questionAnnotationMap, questionAnnotationsSignature, type QuestionAnnotation, type QuestionAnnotationsDocument } from './question-annotations'
 import { aggregateMockChapterPerformance, chapterLearningPerformance, clearHistory, clearMockAttempts, readHistory, recordMockAttempt, recordPracticeAnswer, writeHistory } from './history'
 import { clearStoredSession, hydrateStoredSession, questionBankSignature, readStoredSession, writeStoredSession, type BankKey } from './session'
@@ -41,6 +41,7 @@ export function initRentApp(root: HTMLElement, questions: Question[], options: I
   let chapterNo = ''
   let chapterOrder: ChapterOrder = 'random'
   let examQuestions: Question[] = []
+  let examOptionOrders: Record<string, string[]> = {}
   let examAnswers: Record<string, string> = {}
   let examIndex = 0
   let examStartedAt = 0
@@ -86,6 +87,9 @@ export function initRentApp(root: HTMLElement, questions: Question[], options: I
   } else if (restoredSession?.kind === 'mock') {
     mode = 'mock'
     examQuestions = restoredSession.questions
+    examOptionOrders = restoredSession.optionOrders
+      ? Object.fromEntries(Object.entries(restoredSession.optionOrders).map(([key, order]) => [key, [...order]]))
+      : Object.fromEntries(examQuestions.map((question) => [questionKey(question), question.options.map((option) => option.id)]))
     examAnswers = restoredSession.answers
     examIndex = restoredSession.index
     examStartedAt = restoredSession.startedAt
@@ -126,6 +130,7 @@ export function initRentApp(root: HTMLElement, questions: Question[], options: I
       questionKeys: examQuestions.map(questionKey),
       index: examIndex,
       answers: { ...examAnswers },
+      optionOrders: Object.fromEntries(Object.entries(examOptionOrders).map(([key, order]) => [key, [...order]])),
       attemptId: examAttemptId,
       startedAt: examStartedAt,
       updatedAt: Date.now(),
@@ -197,7 +202,7 @@ export function initRentApp(root: HTMLElement, questions: Question[], options: I
     return `<section class="card history-panel"><div class="history-heading"><div><p class="eyebrow">Local History</p><h2>歷史模擬考表現</h2><p>共 ${history.mockAttempts.length} 次模擬考；紀錄只保存在此瀏覽器。</p></div>${button('clear-mock-history', '清除模擬考紀錄')}</div>${confirmingClearMockHistory ? `<div class="confirm" role="alert"><p>確定清除所有模擬考結果分布？錯題與累計作答不受影響。</p><div class="action-group">${button('confirm-clear-mock-history', '確認清除')}${button('cancel-clear-mock-history', '取消')}</div></div>` : ''}<h3>歷次合計章節正確率</h3><div class="performance-grid">${aggregate.map((item) => `<article class="performance-card"><strong>第 ${item.chapter} 章</strong><span>${item.correct} / ${item.total} 題</span><b>${item.rate}%</b><progress data-mock-chapter-rate="${item.chapter}" max="100" value="${item.rate}" aria-label="第 ${item.chapter} 章歷次正確率 ${item.rate}%"></progress></article>`).join('')}</div><h3>每次模擬考結果</h3><div class="attempt-list">${attempts.map((attempt) => `<details class="attempt-card"><summary><span>${escapeHtml(new Date(attempt.completedAt).toLocaleString('zh-TW'))}・${attempt.bankKey === 'withLaw' ? '有詳解題庫' : '只有答案題庫'}</span><strong>${attempt.correct} / ${attempt.total}（${Math.round(attempt.correct / attempt.total * 100)}%）</strong></summary><div class="performance-grid compact">${attempt.chapters.map((chapter) => { const chapterRate = Math.round(chapter.correct / chapter.total * 100); return `<article class="performance-card"><strong>第 ${chapter.chapter} 章</strong><span>${chapter.correct} / ${chapter.total} 題</span><b>${chapterRate}%</b><progress max="100" value="${chapterRate}" aria-label="第 ${chapter.chapter} 章本次正確率 ${chapterRate}%"></progress></article>` }).join('')}</div></details>`).join('')}</div></section>`
   }
   const renderMockStart = () => {
-    root.innerHTML = `${renderHeader()}<main class="single-column"><section class="card"><p class="eyebrow">Mock Exam</p><h1>120 分鐘模擬考</h1><p>系統會從第 1 至第 10 章，每章各隨機抽取 10 題，共 100 題；經實際課程註記為「可忽略」的題目不納入抽題。每次開始模擬考都會重新抽題，作答時間為 120 分鐘；交卷後可查看各章統計與逐題答案。</p>${button('start-mock', '開始模擬考', mockError ? 'disabled' : '')}${mockError ? `<p class="feedback error" role="alert">${escapeHtml(mockError)}</p>` : ''}</section>${renderMockHistory()}</main>`
+    root.innerHTML = `${renderHeader()}<main class="single-column"><section class="card"><p class="eyebrow">Mock Exam</p><h1>120 分鐘模擬考</h1><p>系統會從第 1 至第 10 章，每章各隨機抽取 10 題，共 100 題；經實際課程註記為「可忽略」的題目不納入抽題。每次開始模擬考都會重新抽題並隨機重排 A、B、C、D 選項，正確答案會同步調整；作答時間為 120 分鐘，交卷後可查看各章統計與逐題答案。</p>${button('start-mock', '開始模擬考', mockError ? 'disabled' : '')}${mockError ? `<p class="feedback error" role="alert">${escapeHtml(mockError)}</p>` : ''}</section>${renderMockHistory()}</main>`
     bind()
   }
   const renderPractice = () => {
@@ -374,7 +379,10 @@ export function initRentApp(root: HTMLElement, questions: Question[], options: I
       if (action === 'toggle-explanation') { explanationOpen = !explanationOpen; saveCurrentPracticeSession(); render() }
       if (action === 'start-mock') {
         try {
-          examQuestions = buildMockExam(questions, Math.random, ignoredKeys)
+          const shuffledQuestions = buildMockExam(questions, Math.random, ignoredKeys)
+            .map((question) => ({ key: questionKey(question), ...shuffleQuestionOptions(question, Math.random) }))
+          examQuestions = shuffledQuestions.map((item) => item.question)
+          examOptionOrders = Object.fromEntries(shuffledQuestions.map((item) => [item.key, item.optionOrder]))
           examAnswers = {}
           examIndex = 0
           examStartedAt = Date.now()
