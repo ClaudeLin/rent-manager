@@ -1,6 +1,6 @@
 # 租賃住宅管理人員練習工具
 
-[![Tests](https://github.com/ClaudeLin/rent-manager/actions/workflows/tests.yml/badge.svg?branch=main)](https://github.com/ClaudeLin/rent-manager/actions/workflows/tests.yml)
+[![Tests](https://github.com/MuChengTechnology/rent-manager/actions/workflows/tests.yml/badge.svg?branch=main)](https://github.com/MuChengTechnology/rent-manager/actions/workflows/tests.yml)
 
 以靜態題庫 JSON 提供全題練習、章節練習、120 分鐘模擬考、歷史章節表現與錯題回顧的前端網站。進入網站後須先選擇「有詳解題庫」或「只有答案題庫」；同一輪練習及同一場模擬考不會混用兩份資料。
 
@@ -168,7 +168,7 @@ Converter 會 fail closed 驗證：
 
 ## 問題回報
 
-若發現題目、答案、法源、畫面顯示問題或有功能建議，請至 [GitHub Issues](https://github.com/ClaudeLin/rent-manager/issues/new) 建立回報。建議附上章節、題號、題庫版本與問題描述，請勿提供個人資料。
+若發現題目、答案、法源、畫面顯示問題或有功能建議，可至 [GitHub Issues](https://github.com/MuChengTechnology/rent-manager/issues/new) 建立回報；沒有 GitHub 帳號時，也可使用網站「關於本站」頁面的「Email 回報」按鈕。建議附上章節、題號、題庫版本與問題描述，請勿提供個人資料。
 
 ## 授權
 
