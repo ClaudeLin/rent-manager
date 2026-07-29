@@ -386,10 +386,17 @@ test('About 集中顯示資料來源、免責聲明與模擬考規則', async ({
   await expect(page.getByText('每次開始模擬考都會重新抽題')).toBeVisible()
   await expect(page.getByText('作答時間為 120 分鐘')).toBeVisible()
 
-  const report = page.getByRole('link', { name: '前往 GitHub Issues 回報' })
-  await expect(report).toHaveAttribute('href', 'https://github.com/ClaudeLin/rent-manager/issues/new')
-  await expect(report).toHaveAttribute('target', '_blank')
-  await expect(report).toHaveAttribute('rel', 'noopener noreferrer')
+  const githubReport = page.getByRole('link', { name: '前往 GitHub Issues 回報' })
+  await expect(githubReport).toHaveAttribute('href', 'https://github.com/MuChengTechnology/rent-manager/issues/new')
+  await expect(githubReport).toHaveAttribute('target', '_blank')
+  await expect(githubReport).toHaveAttribute('rel', 'noopener noreferrer')
+
+  const emailReport = page.getByRole('link', { name: 'Email 回報' })
+  await expect(emailReport).toHaveAttribute(
+    'href',
+    'mailto:issue.report+rentmanager@muchengtech.com?subject=%E7%A7%9F%E8%B3%83%E9%A1%8C%E5%BA%AB%E5%95%8F%E9%A1%8C%E5%9B%9E%E5%A0%B1%E8%88%87%E5%BB%BA%E8%AD%B0',
+  )
+  await expect(page.getByText('issue.report+rentmanager@muchengtech.com')).toHaveCount(0)
 })
 
 test('所有頁面使用同一個根目錄 favicon', async ({ page, request }) => {
