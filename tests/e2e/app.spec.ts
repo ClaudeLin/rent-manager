@@ -373,7 +373,7 @@ test('入口顯示來源摘要、練習用途聲明與 About 入口', async ({ p
   await expect(page.getByRole('link', { name: '查看完整資料來源、模擬考規則與免責聲明' })).toHaveAttribute('href', aboutPath)
 })
 
-test('About 集中顯示資料來源、免責聲明與模擬考規則', async ({ page }) => {
+test('About 集中顯示資料來源、免責聲明與模擬考規則', async ({ page, request }) => {
   await page.goto(aboutPath)
 
   await expect(page.getByRole('heading', { name: '關於本題庫' })).toBeVisible()
@@ -402,7 +402,28 @@ test('About 集中顯示資料來源、免責聲明與模擬考規則', async ({
     'href',
     'mailto:issue.report+rentmanager@muchengtech.com?subject=%E7%A7%9F%E8%B3%83%E9%A1%8C%E5%BA%AB%E5%95%8F%E9%A1%8C%E5%9B%9E%E5%A0%B1%E8%88%87%E5%BB%BA%E8%AD%B0',
   )
+
+  const lineContact = page.getByRole('link', { name: '加入沐承科技官方 LINE' })
+  await expect(lineContact).toHaveAttribute('href', 'https://line.me/R/ti/p/%40079aocum')
+  await expect(lineContact).toHaveAttribute('target', '_blank')
+  await expect(lineContact).toHaveAttribute('rel', 'noopener noreferrer')
+  const lineIcon = lineContact.locator('img')
+  await expect(lineIcon).toHaveAttribute('src', '/line.svg')
+  await expect(lineIcon).toHaveAttribute('alt', '')
+  await expect.poll(() => lineIcon.evaluate((image) => {
+    const loadedImage = image as HTMLImageElement
+    return loadedImage.complete && loadedImage.naturalWidth > 0
+  })).toBe(true)
+  const lineAsset = await request.get('/line.svg')
+  expect(lineAsset.ok()).toBe(true)
+  expect(lineAsset.headers()['content-type']).toContain('image/svg+xml')
+  const lineBox = await lineContact.boundingBox()
+  expect(lineBox?.width).toBeGreaterThanOrEqual(44)
+  expect(lineBox?.height).toBeGreaterThanOrEqual(44)
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true)
+
   await expect(page.getByText('issue.report+rentmanager@muchengtech.com')).toHaveCount(0)
+  await expect(page.getByText('@079aocum')).toHaveCount(0)
 })
 
 test('所有頁面使用同一個根目錄 favicon', async ({ page, request }) => {
@@ -428,10 +449,12 @@ test('網站固定由根目錄提供入口與靜態資源', async ({ page, reque
   expect(resourcePaths.every((path) => path.startsWith('/'))).toBe(true)
 })
 
-test('Service Worker precache 包含共用題目註記', async ({ request }) => {
+test('Service Worker precache 包含共用題目註記與 LINE 圖示', async ({ request }) => {
   const response = await request.get('/sw.js')
   expect(response.ok()).toBe(true)
-  expect(await response.text()).toContain('question_annotations.json')
+  const serviceWorker = await response.text()
+  expect(serviceWorker).toContain('question_annotations.json')
+  expect(serviceWorker).toContain('line.svg')
 })
 
 test('選擇有詳解題庫後只載入對應 JSON', async ({ page }) => {
