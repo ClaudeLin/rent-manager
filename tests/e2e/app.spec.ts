@@ -384,7 +384,13 @@ test('About 集中顯示資料來源、免責聲明與模擬考規則', async ({
   await expect(page.getByText('第 1 至第 10 章，每章各隨機抽取 10 題，共 100 題')).toBeVisible()
   await expect(page.getByText('經實際課程註記為「可忽略」的題目，不納入模擬考抽題。')).toBeVisible()
   await expect(page.getByText('每次開始模擬考都會重新抽題')).toBeVisible()
+  await expect(page.getByText('每題的 A、B、C、D 選項會隨機重排，正確答案同步調整。')).toBeVisible()
   await expect(page.getByText('作答時間為 120 分鐘')).toBeVisible()
+  await expect(page.getByText('本站是由沐承科技有限公司提供的公開免費服務')).toBeVisible()
+  const license = page.getByRole('link', { name: 'MIT License' })
+  await expect(license).toHaveAttribute('href', 'https://github.com/MuChengTechnology/rent-manager/blob/main/LICENSE')
+  await expect(license).toHaveAttribute('target', '_blank')
+  await expect(license).toHaveAttribute('rel', 'noopener noreferrer')
 
   const githubReport = page.getByRole('link', { name: '前往 GitHub Issues 回報' })
   await expect(githubReport).toHaveAttribute('href', 'https://github.com/MuChengTechnology/rent-manager/issues/new')

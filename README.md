@@ -4,6 +4,8 @@
 
 以靜態題庫 JSON 提供全題練習、章節練習、120 分鐘模擬考、歷史章節表現與錯題回顧的前端網站。進入網站後須先選擇「有詳解題庫」或「只有答案題庫」；同一輪練習及同一場模擬考不會混用兩份資料。
 
+本工具是由**沐承科技有限公司**提供的公開免費服務；原創程式碼於 [MuChengTechnology/rent-manager](https://github.com/MuChengTechnology/rent-manager) 公開，並採用 [MIT License](LICENSE) 授權。官方題庫與第三方內容不因本專案授權而改變其權利歸屬。
+
 ## 先備條件
 
 - Node.js（建議使用目前仍受支援的 LTS 版本）
