@@ -4,10 +4,11 @@ import { aggregateMockChapterPerformance, chapterLearningPerformance, clearHisto
 import { clearStoredSession, hydrateStoredSession, questionBankSignature, readStoredSession, writeStoredSession, type BankKey } from './session'
 import { formatRemaining, remainingSeconds, shouldAutoSubmit } from './timer'
 import type { ExamProfile } from './exam-profiles'
+import { initMobileMenu, renderPrimaryHeader, type NavigationRoutes } from './navigation'
 
 type Mode = 'practice' | 'chapter-select' | 'mock-start' | 'mock' | 'result' | 'review'
 type ChapterOrder = 'random' | 'sequential'
-type AppRoutes = { home: string; practice: string; chapter: string; mock: string; wrong: string; about: string }
+type AppRoutes = NavigationRoutes
 type InitRentAppOptions = { profile?: ExamProfile; routes?: AppRoutes; bankLabel?: string; bankKey?: BankKey; initialView?: 'practice' | 'chapter' | 'mock' | 'wrong'; annotations?: QuestionAnnotationsDocument }
 
 const escapeHtml = (value: string) => value.replace(/[&<>'"]/g, (character) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' })[character]!)
@@ -181,7 +182,7 @@ export function initRentApp(root: HTMLElement, questions: Question[], options: I
     examRecorded = true
   }
   const stopTimer = () => { if (timerId !== undefined) clearInterval(timerId); timerId = undefined }
-  const renderHeader = () => `<header class="brand"><a class="brand-home" href="${escapeHtml(routes.home)}" aria-label="返回入口">租賃住宅管理人員證照題庫練習</a><strong>Rental Housing Manager</strong><button type="button" class="mobile-menu-toggle" data-action="toggle-mobile-menu" aria-label="開啟選單" aria-expanded="false" aria-controls="primary-nav"><span class="hamburger-icon" aria-hidden="true"><span class="hamburger-line"></span><span class="hamburger-line"></span><span class="hamburger-line"></span></span></button><small>Practice${mockEnabled ? ' • Mock Exam' : ''} • Review${options.bankLabel ? `・目前：${escapeHtml(options.bankLabel)}` : ''}</small><nav id="primary-nav" class="primary-nav" aria-label="主要導覽"><a href="${escapeHtml(routes.practice)}">全題練習</a><a href="${escapeHtml(routes.chapter)}">章節練習</a>${mockEnabled ? `<a href="${escapeHtml(routes.mock)}">模擬考</a>` : ''}<a href="${escapeHtml(routes.wrong)}">錯題回顧</a><a href="${escapeHtml(routes.about)}">關於本站</a><a href="${escapeHtml(routes.home)}">更換題庫</a></nav></header>`
+  const renderHeader = () => renderPrimaryHeader({ routes, mockEnabled, bankLabel: options.bankLabel })
   const renderOptions = (question: Question, answer?: string, reveal = false) => `<div class="options">${question.options.map((option) => {
     const selected = answer === option.id
     const correctness = reveal ? (option.id === question.answer ? ' is-correct' : selected ? ' is-wrong' : '') : selected ? ' is-selected' : ''
@@ -302,6 +303,7 @@ export function initRentApp(root: HTMLElement, questions: Question[], options: I
     }, 1000)
   }
   const bind = () => {
+    initMobileMenu(root)
     root.querySelectorAll<HTMLButtonElement>('[data-option]').forEach((element) => element.addEventListener('click', () => {
       if (mode === 'result' || (mode === 'practice' && checked)) return
       if (mode === 'mock') {
@@ -336,15 +338,7 @@ export function initRentApp(root: HTMLElement, questions: Question[], options: I
     }))
     root.querySelectorAll<HTMLElement>('[data-action]').forEach((element) => element.addEventListener('click', () => {
       const action = element.dataset.action
-      if (action === 'toggle-mobile-menu') {
-        const navigation = root.querySelector<HTMLElement>('#primary-nav')
-        const expanded = element.getAttribute('aria-expanded') === 'true'
-        const nextExpanded = !expanded
-        element.setAttribute('aria-expanded', String(nextExpanded))
-        element.setAttribute('aria-label', nextExpanded ? '關閉選單' : '開啟選單')
-        navigation?.classList.toggle('is-open', nextExpanded)
-        return
-      }
+
       if (action === 'toggle-settings') {
         settingsCollapsed = !settingsCollapsed
         const settings = root.querySelector<HTMLElement>('#practice-settings')

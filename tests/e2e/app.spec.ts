@@ -42,7 +42,7 @@ test('入口選擇題庫後進入全題練習，Header 可返回入口重新選�
   await expect(page.locator('.hamburger-line')).toHaveCount(3)
   await expect(page.getByRole('link', { name: '返回入口' })).toHaveAttribute('href', homePath)
   await openPrimaryNavigation(page)
-  await expect(page.getByRole('link', { name: '更換題庫' })).toHaveAttribute('href', homePath)
+  await expect(page.getByRole('link', { name: '更換題庫版本' })).toHaveAttribute('href', homePath)
   await expect(page.getByRole('link', { name: '關於本站' })).toHaveAttribute('href', aboutPath)
   await expect(page.locator('.brand small')).toContainText('目前：初訓・有詳解題庫')
 
@@ -52,7 +52,7 @@ test('入口選擇題庫後進入全題練習，Header 可返回入口重新選�
   await expect(page.locator('[data-question-key]')).toBeVisible()
 
   await openPrimaryNavigation(page)
-  await page.getByRole('link', { name: '更換題庫' }).click()
+  await page.getByRole('link', { name: '更換題庫版本' }).click()
   await expect(page).toHaveURL(homePath)
   await expect(page.getByRole('heading', { name: '選擇題庫版本' })).toBeVisible()
 })
