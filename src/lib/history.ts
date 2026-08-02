@@ -251,25 +251,25 @@ export function chapterLearningPerformance(historyValue: History): ChapterLearni
   })
 }
 
-export function readHistory(): History {
+export function readHistory(storageKey = HISTORY_KEY): History {
   try {
-    return parseHistory(JSON.parse(localStorage.getItem(HISTORY_KEY) ?? 'null'))
+    return parseHistory(JSON.parse(localStorage.getItem(storageKey) ?? 'null'))
   } catch {
     return emptyHistory()
   }
 }
 
-export function writeHistory(history: History): void {
+export function writeHistory(history: History, storageKey = HISTORY_KEY): void {
   try {
-    localStorage.setItem(HISTORY_KEY, JSON.stringify(parseHistory(history)))
+    localStorage.setItem(storageKey, JSON.stringify(parseHistory(history)))
   } catch {
     // Storage may be unavailable in restricted contexts.
   }
 }
 
-export function clearHistory(): void {
+export function clearHistory(storageKey = HISTORY_KEY): void {
   try {
-    localStorage.removeItem(HISTORY_KEY)
+    localStorage.removeItem(storageKey)
   } catch {
     // Storage may be unavailable in restricted contexts.
   }

@@ -173,32 +173,32 @@ export function hydrateStoredSession(
   return { ...stored, questions: hydratedQuestions }
 }
 
-export function readStoredSession(): StoredSession | null {
+export function readStoredSession(storageKey = PRACTICE_SESSION_KEY): StoredSession | null {
   try {
-    return parseStoredSession(JSON.parse(localStorage.getItem(PRACTICE_SESSION_KEY) ?? 'null'))
+    return parseStoredSession(JSON.parse(localStorage.getItem(storageKey) ?? 'null'))
   } catch {
     return null
   }
 }
 
-export function writeStoredSession(session: StoredSession): void {
+export function writeStoredSession(session: StoredSession, storageKey = PRACTICE_SESSION_KEY): void {
   try {
-    localStorage.setItem(PRACTICE_SESSION_KEY, JSON.stringify(session))
+    localStorage.setItem(storageKey, JSON.stringify(session))
   } catch {
     // Storage may be unavailable in restricted contexts.
   }
 }
 
-export function clearStoredSession(): void {
+export function clearStoredSession(storageKey = PRACTICE_SESSION_KEY): void {
   try {
-    localStorage.removeItem(PRACTICE_SESSION_KEY)
+    localStorage.removeItem(storageKey)
   } catch {
     // Storage may be unavailable in restricted contexts.
   }
 }
 
-export function sessionSummary(session: StoredSession): { bankKey: BankKey; route: string; title: string; progress: string } {
-  const route = session.view === 'chapter' ? '/practice/chapter/' : session.view === 'wrong' ? '/wrong/' : session.view === 'mock' ? '/mock/' : '/practice/'
+export function sessionSummary(session: StoredSession, basePath = ''): { bankKey: BankKey; route: string; title: string; progress: string } {
+  const route = session.view === 'chapter' ? `${basePath}/practice/chapter/` : session.view === 'wrong' ? `${basePath}/wrong/` : session.view === 'mock' ? `${basePath}/mock/` : `${basePath}/practice/`
   const title = session.kind === 'mock'
     ? '120 分鐘模擬考'
     : session.view === 'chapter'
