@@ -27,6 +27,7 @@ export function initRentApp(root: HTMLElement, questions: Question[], options: I
   const bankSignature = questionBankSignature(questions, annotationSignature)
   const questionChapterByKey = new Map(questions.map((question) => [questionKey(question), question.chapter_no]))
   const validQuestionKeys = new Set(questionChapterByKey.keys())
+  const availableChapters = [...new Set(questions.map((question) => question.chapter_no))].sort((left, right) => left - right)
   const readCurrentHistory = () => {
     const history = readHistory(historyKey)
     const wrongKeys = history.wrongKeys.filter((key) => validQuestionKeys.has(key))
@@ -247,7 +248,7 @@ export function initRentApp(root: HTMLElement, questions: Question[], options: I
   const renderReview = () => {
     const history = readCurrentHistory()
     const rate = history.answered ? Math.round(history.correct / history.answered * 100) : 0
-    const chapterPerformance = chapterLearningPerformance(history)
+    const chapterPerformance = chapterLearningPerformance(history, availableChapters)
     root.innerHTML = `${renderHeader()}<main class="single-column"><section class="card"><h1>錯題回顧</h1><p>作答紀錄僅保存在此瀏覽器。歷史答錯率會累計每次已作答結果；「目前錯題」則會在之後答對同題時解除。</p><dl><dt>累計作答</dt><dd>累計作答：${history.answered}</dd><dt>正確率</dt><dd>${rate}%</dd><dt>錯題</dt><dd>錯題數：${history.wrongKeys.length}</dd></dl><div class="action-group">${button('practice-wrongs', '練習全部錯題', history.wrongKeys.length ? '' : 'disabled')}${button('reset-history', '重設本機紀錄')}<a class="button secondary-button" href="${escapeHtml(routes.practice)}">返回練習</a></div></section><section class="card history-panel"><p class="eyebrow">Chapter Review</p><h2>各章錯誤狀況</h2><div class="wrong-chapter-grid">${chapterPerformance.map((item) => `<article class="wrong-chapter-card" data-wrong-chapter-summary="${item.chapter}"><h3>第 ${item.chapter} 章</h3><p>歷史答錯率 <strong>${item.wrongRate}%</strong>（${item.wrong} / ${item.answered}）</p><progress max="100" value="${item.wrongRate}" aria-label="第 ${item.chapter} 章歷史答錯率 ${item.wrongRate}%"></progress><p>目前錯題 <strong>${item.currentWrong} 題</strong></p>${button('practice-wrong-chapter', `練習第 ${item.chapter} 章錯題`, `data-wrong-chapter="${item.chapter}" ${item.currentWrong ? '' : 'disabled'}`)}</article>`).join('')}</div></section></main>`
     bind()
   }

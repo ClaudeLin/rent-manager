@@ -19,7 +19,7 @@ describe('換證 corrected 題庫完整性', () => {
     expect(read('public/data/renew/questions_with_law.json')).toBe(withLawSource)
     expect(read('public/data/renew/questions_without_law.json')).toBe(withoutLawSource)
     expect(existsSync(resolve(process.cwd(), 'public/data/renew/question_annotations.json'))).toBe(true)
-    expect(JSON.parse(read('public/data/renew/question_annotations.json'))).toEqual([])
+    expect(JSON.parse(read('public/data/renew/question_annotations.json'))).toEqual({ schema_version: 1, updated_at: '2026-02-06', annotations: [] })
   })
 
   it('兩份官方 PDF 的已稽核結果有 379 題、完整章節與連續題號', () => {

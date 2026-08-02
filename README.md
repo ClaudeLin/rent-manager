@@ -2,7 +2,7 @@
 
 [![Tests](https://github.com/MuChengTechnology/rent-manager/actions/workflows/tests.yml/badge.svg?branch=main)](https://github.com/MuChengTechnology/rent-manager/actions/workflows/tests.yml)
 
-以靜態題庫 JSON 提供全題練習、章節練習、120 分鐘模擬考、歷史章節表現與錯題回顧的前端網站。進入網站後須先選擇「有詳解題庫」或「只有答案題庫」；同一輪練習及同一場模擬考不會混用兩份資料。
+以靜態題庫 JSON 提供全題練習、章節練習、錯題回顧與初訓模擬考的前端網站。根目錄先選擇訓練類型：`/init` 是初訓，`/renew` 是換證；再選擇「有詳解題庫」或「只有答案題庫」。兩條路徑的題庫選擇、進行中 session 與本機學習紀錄完全獨立。
 
 本工具是由**沐承科技有限公司**提供的公開免費服務；原創程式碼於 [MuChengTechnology/rent-manager](https://github.com/MuChengTechnology/rent-manager) 公開，並採用 [MIT License](LICENSE) 授權。官方題庫與第三方內容不因本專案授權而改變其權利歸屬。
 
@@ -31,12 +31,15 @@ npm run dev
 
 | 路徑 | 功能 |
 |---|---|
-| `/` | 選擇有詳解或只有答案題庫 |
-| `/practice` | 全題庫隨機單題練習 |
-| `/practice/chapter` | 選擇章節後隨機或依題號順序練習 |
-| `/mock` | 120 分鐘、十章各隨機抽十題模擬考與歷史章節正確率 |
-| `/wrong` | 作答統計、各章歷史答錯率與指定章節錯題練習 |
-| `/about` | 題庫來源、模擬考規則與免責聲明 |
+| `/` | 選擇初訓或換證題庫 |
+| `/init/`、`/renew/` | 選擇該訓練類型的有詳解或只有答案題庫，並續作或放棄該類型進度 |
+| `/init/practice`、`/renew/practice` | 全題庫隨機單題練習 |
+| `/init/practice/chapter`、`/renew/practice/chapter` | 選擇實際存在的章節後隨機或依題號順序練習 |
+| `/init/mock` | 初訓 120 分鐘、十章各隨機抽十題模擬考與歷史章節正確率 |
+| `/init/wrong`、`/renew/wrong` | 作答統計、實際章節的歷史答錯率與指定章節錯題練習 |
+| `/init/about`、`/renew/about` | 各題庫資料來源、功能說明與免責聲明 |
+
+換證題庫目前有 379 題、實際為第 1 至第 3 章；換證模擬考刻意延後，網站不提供連結且不會產生 `/renew/mock/`。舊版 `/practice`、`/practice/chapter`、`/mock`、`/wrong` 與 `/about` 仍保留相容 redirect 到對應的 `/init` 路由。
 
 題庫選擇保存在目前瀏覽器的 `localStorage`，關閉並重新開啟網站或已安裝的 Web App 後，仍會使用先前選擇的題庫。可隨時由頁首的「更換題庫」返回入口重選。
 
@@ -80,6 +83,7 @@ npm run preview
 - [租賃住宅管理人員測驗題庫｜中華民國租賃住宅服務商業同業公會全國聯合會](https://rentalh.org.tw/down-list2.php?lmenuid=12&mpmid=2)
 - 來源頁提供「租賃住宅管理人員資格訓練題庫(全科目不含法源依據)115.02.06更新版」與「租賃住宅管理人員資格訓練題庫(全科目含法源依據)115.02.06更新版」兩份檔案。
 - 本專案目前題庫最後更新／轉檔日期：**2026/7/21**。
+- 換證題庫來源為官方「115.02.06 更新版」（2026-02-06），Runtime 兩個版本各 **379 題**；內容請以官方最新公告為準。
 - 網站 `/about` 集中說明資料來源、模擬考規則與免責聲明；題庫僅供個人學習及測驗練習使用，內容仍應以官方最新公告為準。
 
 使用者確認的 corrected 原始來源位於 `source-data/`，不可由轉換程式直接覆寫：

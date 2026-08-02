@@ -235,9 +235,9 @@ export function aggregateMockChapterPerformance(historyValue: History): MockChap
   })
 }
 
-export function chapterLearningPerformance(historyValue: History): ChapterLearningPerformance[] {
+export function chapterLearningPerformance(historyValue: History, chapters: readonly number[] = Array.from({ length: 10 }, (_, index) => index + 1)): ChapterLearningPerformance[] {
   const history = parseHistory(historyValue)
-  return Array.from({ length: 10 }, (_, index) => index + 1).map((chapter) => {
+  return [...new Set(chapters)].filter((chapter) => Number.isInteger(chapter) && chapter >= 1 && chapter <= 10).sort((left, right) => left - right).map((chapter) => {
     const stat = history.chapterStats[String(chapter)] ?? { answered: 0, correct: 0 }
     const wrong = stat.answered - stat.correct
     const currentWrong = history.wrongKeys.filter((key) => key.startsWith(`c${chapter}-`)).length
