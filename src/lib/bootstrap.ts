@@ -1,72 +1,40 @@
 import { initRentApp } from './app'
 import { validateQuestionAnnotations } from './question-annotations'
 import { validateQuestionBank } from './questions'
+import { getExamProfile, routesForProfile, type ExamView, type TrackKey } from './exam-profiles'
 
-export type ExamView = 'practice' | 'chapter' | 'mock' | 'wrong'
+export type { ExamView } from './exam-profiles'
 
-const BANK_KEY = 'rent-exam-question-bank-v1'
-const readSelectedBank = (): string | null => {
+function readSelectedBank(storageKey: string): string | null {
   try {
-    const persistentValue = localStorage.getItem(BANK_KEY)
-
-    if (persistentValue) {
-      return persistentValue
-    }
-  } catch {
-    // localStorage 在部分受限制環境可能不可用。
-  }
-
+    const persistentValue = localStorage.getItem(storageKey)
+    if (persistentValue) return persistentValue
+  } catch { /* restricted storage */ }
+  // Only initial training has a legacy sessionStorage migration path.
+  if (storageKey !== 'rent-exam-question-bank-v1') return null
   try {
-    const sessionValue = sessionStorage.getItem(BANK_KEY)
-
-    if (sessionValue) {
-      // 將舊版 sessionStorage 設定遷移至 localStorage。
-      try {
-        localStorage.setItem(BANK_KEY, sessionValue)
-      } catch {
-        // 無法持久化時仍可繼續使用目前 session。
-      }
-    }
-
-    return sessionValue
-  } catch {
-    return null
-  }
+    const value = sessionStorage.getItem(storageKey)
+    if (value) { try { localStorage.setItem(storageKey, value) } catch { /* continue this session */ } }
+    return value
+  } catch { return null }
 }
 const escapeHtml = (value: string) => value.replace(/[&<>'"]/g, (character) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' })[character]!)
 
-export async function bootstrapExamPage(root: HTMLElement, initialView: ExamView): Promise<void> {
-  const routes = {
-    home: '/',
-    practice: '/practice/',
-    chapter: '/practice/chapter/',
-    mock: '/mock/',
-    wrong: '/wrong/',
-    about: '/about/',
-  }
-  const questionBanks = {
-    withLaw: { label: '有詳解題庫', path: '/data/questions_with_law.json' },
-    withoutLaw: { label: '只有答案題庫', path: '/data/questions_without_law.json' },
-  } as const
-
-  const bankKey = readSelectedBank() as | keyof typeof questionBanks | null
-  if (!bankKey || !(bankKey in questionBanks)) {
-    window.location.replace(routes.home)
-    return
-  }
-
-  const bank = questionBanks[bankKey]
+export async function bootstrapExamPage(root: HTMLElement, track: TrackKey, initialView: ExamView): Promise<void> {
+  const profile = getExamProfile(track)
+  const routes = routesForProfile(profile)
+  if (initialView === 'mock' && !profile.mockExam.enabled) { window.location.replace(routes.practice); return }
+  const bankKey = readSelectedBank(profile.storage.selectedBank) as keyof typeof profile.questionBanks | null
+  if (!bankKey || !(bankKey in profile.questionBanks)) { window.location.replace(routes.home); return }
+  const bank = profile.questionBanks[bankKey]
   root.innerHTML = `<p class="loading">正在載入${bank.label}…</p>`
   try {
-    const [bankResponse, annotationsResponse] = await Promise.all([
-      fetch(bank.path),
-      fetch('/data/question_annotations.json'),
-    ])
+    const [bankResponse, annotationsResponse] = await Promise.all([fetch(bank.path), fetch(profile.annotationPath)])
     if (!bankResponse.ok) throw new Error(`題庫讀取失敗（${bankResponse.status}）`)
     if (!annotationsResponse.ok) throw new Error(`題目註記讀取失敗（${annotationsResponse.status}）`)
     const questions = validateQuestionBank(await bankResponse.json())
     const annotations = validateQuestionAnnotations(await annotationsResponse.json(), questions)
-    initRentApp(root, questions, { routes, bankLabel: bank.label, bankKey, initialView, annotations })
+    initRentApp(root, questions, { profile, routes, bankLabel: `${profile.label}・${bank.label}`, bankKey, initialView, annotations })
   } catch (error) {
     const message = error instanceof Error ? error.message : '未知錯誤'
     root.innerHTML = `<section class="load-error"><p role="alert">${escapeHtml(bank.label)}目前無法載入：${escapeHtml(message)}</p><a class="button" href="${routes.home}">返回入口</a></section>`
