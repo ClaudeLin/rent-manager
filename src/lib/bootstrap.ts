@@ -2,29 +2,17 @@ import { initRentApp } from './app'
 import { validateQuestionAnnotations } from './question-annotations'
 import { validateQuestionBank } from './questions'
 import { getExamProfile, routesForProfile, type ExamView, type TrackKey } from './exam-profiles'
+import { readSelectedBank } from './selected-bank'
 
 export type { ExamView } from './exam-profiles'
 
-function readSelectedBank(storageKey: string): string | null {
-  try {
-    const persistentValue = localStorage.getItem(storageKey)
-    if (persistentValue) return persistentValue
-  } catch { /* restricted storage */ }
-  // Only initial training has a legacy sessionStorage migration path.
-  if (storageKey !== 'rent-exam-question-bank-v1') return null
-  try {
-    const value = sessionStorage.getItem(storageKey)
-    if (value) { try { localStorage.setItem(storageKey, value) } catch { /* continue this session */ } }
-    return value
-  } catch { return null }
-}
 const escapeHtml = (value: string) => value.replace(/[&<>'"]/g, (character) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' })[character]!)
 
 export async function bootstrapExamPage(root: HTMLElement, track: TrackKey, initialView: ExamView): Promise<void> {
   const profile = getExamProfile(track)
   const routes = routesForProfile(profile)
   if (initialView === 'mock' && !profile.mockExam.enabled) { window.location.replace(routes.practice); return }
-  const bankKey = readSelectedBank(profile.storage.selectedBank) as keyof typeof profile.questionBanks | null
+  const bankKey = readSelectedBank(profile.storage.selectedBank)
   if (!bankKey || !(bankKey in profile.questionBanks)) { window.location.replace(routes.home); return }
   const bank = profile.questionBanks[bankKey]
   root.innerHTML = `<p class="loading">正在載入${bank.label}…</p>`

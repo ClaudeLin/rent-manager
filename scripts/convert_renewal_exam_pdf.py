@@ -42,24 +42,26 @@ def clean_law_reference(text):
 # other semantic differences fail closed.  Each canonical value is corroborated
 # by the other official edition and recorded in source-data/renew/SEMANTIC_AUDIT.md.
 OFFICIAL_VARIANTS = {
-    (1, 2, 51, 'D'): '應由雙方當事人訂立無償借用契約，經雙方當事人以外之2人證明確係無償借用，並依公證法之規定辦竣公證。',
-    (1, 4, 4, 'D'): '直接報請直轄市、縣(市)主管機關處罰。',
-    (1, 4, 34, 'B'): '管委會主委',
-    (2, 1, 38, 'question'): '依據住宅租賃定型化契約應記載及不得記載事項中，於租賃期間承租人可提前終止租約之情形何者正確?',
-    (3, 3, 5, 'D'): '1,000',
+    (1, 2, 51, 'D'): {'canonical': '應由雙方當事人訂立無償借用契約，經雙方當事人以外之2人證明確係無償借用，並依公證法之規定辦竣公證。', 'observed': ('應由雙方當事人訂立無償借用契約，經雙方當事人以外之 2 人證明確係無償借用，並依公證法之規定辦竣公證。。', '應由雙方當事人訂立無償借用契約，經雙方當事人以外之2人證明確係無償借用，並依公證法之規定辦竣公證。')},
+    (1, 4, 4, 'D'): {'canonical': '直接報請直轄市、縣(市)主管機關處罰。', 'observed': ('直接報請直轄市、縣 (市) 主管機關處罰', '直接報請直轄市、縣(市)主管機關處罰。')},
+    (1, 4, 34, 'B'): {'canonical': '管委會主委', 'observed': ('管委會主', '管委會主委')},
+    (2, 1, 38, 'question'): {'canonical': '依據住宅租賃定型化契約應記載及不得記載事項中，於租賃期間承租人可提前終止租約之情形何者正確?', 'observed': ('依據住宅租賃定型化契約應記載及不得記載事項中，於租賃期間承租人可提前終止租約之情形何者正確?', '依據住宅租賃契約應記載及不得記載事項中，於租賃期間承租人可提前終止租約之情形何者正確?')},
+    (3, 3, 5, 'D'): {'canonical': '1,000', 'observed': ('1,000', '1000')},
 }
 
 def reconcile_official_variants(items):
-    """Apply only the documented, key-scoped official editorial reconciliation."""
+    """Accept only audited source values, then emit their documented canonical text."""
+    def reconcile(key, value):
+        variant = OFFICIAL_VARIANTS.get(key)
+        if not variant: return value
+        if semantic_text(value) not in {semantic_text(observed) for observed in variant['observed']}:
+            raise RuntimeError(f'unexpected official variant at {key}: {value!r}')
+        return variant['canonical']
     for question in items:
         key = (question['chapter_no'], question['section_no'], question['question_no'])
         for option in question['options']:
-            canonical = OFFICIAL_VARIANTS.get((*key, option['id']))
-            if canonical:
-                option['text'] = canonical
-        canonical_question = OFFICIAL_VARIANTS.get((*key, 'question'))
-        if canonical_question:
-            question['question'] = canonical_question
+            option['text'] = reconcile((*key, option['id']), option['text'])
+        question['question'] = reconcile((*key, 'question'), question['question'])
         question['law_reference'] = clean_law_reference(question['law_reference'])
     return items
 
@@ -141,7 +143,7 @@ def validate(items, expected_count=379, require_law=True):
         if q.get('chapter_no') not in (1,2,3) or q.get('section_no') not in range(1,6): errors.append(f'{key}: invalid heading')
         if not q.get('chapter_title') or not q.get('section_title') or not q.get('question'): errors.append(f'{key}: empty text')
         if [x.get('id') for x in q.get('options',[])] != list('ABCD') or any(not x.get('text') for x in q.get('options',[])): errors.append(f'{key}: invalid options')
-        if q.get('answer') not in 'ABCD': errors.append(f'{key}: invalid answer')
+        if q.get('answer') not in ('A', 'B', 'C', 'D'): errors.append(f'{key}: invalid answer')
         if require_law and not q.get('law_reference'): errors.append(f'{key}: empty law_reference')
         if require_law and re.match(r'^(?:答案\s*[:：]?\s*)?[（(][A-DＡ-Ｄ][）)]', q.get('law_reference', '')): errors.append(f'{key}: answer prefix in law_reference')
         if require_law and '法源或來源依據' in q.get('law_reference', ''): errors.append(f'{key}: table header in law_reference')

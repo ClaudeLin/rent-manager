@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { examProfiles, routesForProfile } from '../../src/lib/exam-profiles'
 import { clearHistory, emptyHistory, readHistory, writeHistory } from '../../src/lib/history'
 import { clearStoredSession, readStoredSession, writeStoredSession } from '../../src/lib/session'
+import { readSelectedBank, storeSelectedBank } from '../../src/lib/selected-bank'
 
 const storage = new Map<string, string>()
 Object.defineProperty(globalThis, 'localStorage', { configurable: true, value: {
@@ -34,5 +35,24 @@ describe('track profile 與儲存空間隔離', () => {
     clearStoredSession(examProfiles.renew.storage.session)
     expect(readHistory(examProfiles.init.storage.history).answered).toBe(1)
     expect(readStoredSession(examProfiles.init.storage.session)).not.toBeNull()
+  })
+
+  it('localStorage 受限時以同 profile 的 sessionStorage 保存並讀回題庫選擇', () => {
+    const localDescriptor = Object.getOwnPropertyDescriptor(globalThis, 'localStorage')
+    const sessionDescriptor = Object.getOwnPropertyDescriptor(globalThis, 'sessionStorage')
+    const sessionValues = new Map<string, string>()
+    Object.defineProperty(globalThis, 'localStorage', { configurable: true, value: { getItem: () => { throw new Error('restricted') }, setItem: () => { throw new Error('restricted') } } })
+    Object.defineProperty(globalThis, 'sessionStorage', { configurable: true, value: { getItem: (key: string) => sessionValues.get(key) ?? null, setItem: (key: string, value: string) => sessionValues.set(key, value) } })
+    try {
+      storeSelectedBank(examProfiles.init.storage.selectedBank, 'withLaw')
+      storeSelectedBank(examProfiles.renew.storage.selectedBank, 'withoutLaw')
+      expect(readSelectedBank(examProfiles.init.storage.selectedBank)).toBe('withLaw')
+      expect(readSelectedBank(examProfiles.renew.storage.selectedBank)).toBe('withoutLaw')
+      expect(sessionValues.get(examProfiles.init.storage.selectedBank)).toBe('withLaw')
+      expect(sessionValues.get(examProfiles.renew.storage.selectedBank)).toBe('withoutLaw')
+    } finally {
+      if (localDescriptor) Object.defineProperty(globalThis, 'localStorage', localDescriptor)
+      if (sessionDescriptor) Object.defineProperty(globalThis, 'sessionStorage', sessionDescriptor)
+    }
   })
 })
