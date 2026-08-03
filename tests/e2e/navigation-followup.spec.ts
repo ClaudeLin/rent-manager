@@ -22,6 +22,52 @@ async function assertHeaderActions(page: import('@playwright/test').Page, routes
   await expect(nav.getByRole('link', { name: '切換初訓／換證' })).toHaveAttribute('href', '/')
 }
 
+test('手機題庫選項維持各自淺色，只有按下期間變深且不殘留 hover', async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name !== 'mobile', '手機觸控色彩專屬驗證')
+
+  const initLight = { background: 'rgb(230, 241, 248)', color: 'rgb(23, 79, 120)', border: 'rgb(110, 159, 190)' }
+  const renewLight = { background: 'rgb(229, 243, 240)', color: 'rgb(34, 95, 87)', border: 'rgb(108, 166, 156)' }
+  const initDark = { background: 'rgb(23, 79, 120)', color: 'rgb(255, 255, 255)', border: 'rgb(23, 79, 120)' }
+  const renewDark = { background: 'rgb(34, 95, 87)', color: 'rgb(255, 255, 255)', border: 'rgb(34, 95, 87)' }
+  const lightPair = { init: initLight, renew: renewLight }
+
+  async function assertStateSequence(name: '初訓題庫' | '換證題庫') {
+    await page.goto('/')
+    const link = page.getByRole('link', { name })
+    await expect(link).toBeVisible()
+    const devtools = await page.context().newCDPSession(page)
+    await devtools.send('DOM.enable')
+    await devtools.send('CSS.enable')
+    const { root } = await devtools.send('DOM.getDocument')
+    const selector = name === '初訓題庫' ? 'a[href="/init/"]' : 'a[href="/renew/"]'
+    const { nodeId } = await devtools.send('DOM.querySelector', { nodeId: root.nodeId, selector })
+    const readColors = (element: HTMLElement) => {
+      const style = getComputedStyle(element)
+      return { background: style.backgroundColor, color: style.color, border: style.borderColor }
+    }
+    const readPair = async () => ({
+      init: await page.getByRole('link', { name: '初訓題庫' }).evaluate(readColors),
+      renew: await page.getByRole('link', { name: '換證題庫' }).evaluate(readColors),
+    })
+    const force = async (forcedPseudoClasses: string[]) => {
+      await devtools.send('CSS.forcePseudoState', { nodeId, forcedPseudoClasses })
+      await page.waitForTimeout(170)
+      return readPair()
+    }
+
+    expect(await force([])).toEqual(lightPair)
+    expect(await force(['hover'])).toEqual(lightPair)
+    expect(await force(['hover', 'active'])).toEqual(name === '初訓題庫'
+      ? { init: initDark, renew: renewLight }
+      : { init: initLight, renew: renewDark })
+    expect(await force(['hover'])).toEqual(lightPair)
+    expect(await force([])).toEqual(lightPair)
+  }
+
+  await assertStateSequence('初訓題庫')
+  await assertStateSequence('換證題庫')
+})
+
 test('手機 About 共用可存取漢堡選單且無橫向溢位', async ({ page }, testInfo) => {
   test.skip(testInfo.project.name !== 'mobile', '手機 UX 專屬驗證')
   for (const routes of [init, renew]) {

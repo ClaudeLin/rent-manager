@@ -139,6 +139,15 @@ dl { display: grid; grid-template-columns: 1fr auto; gap: .6rem; } dt, dd { marg
 .disclaimer-card { border-left: 5px solid #f4b942; background: #fffbef; }
 .secondary-button, .about-page .secondary-button { color: #143b63; border: 1px solid #1769aa; background: #e8f2f9; }
 .secondary-button:hover, .about-page .secondary-button:hover { color: #fff; background: #105485; }
+.track-choice-actions .button { border: 1px solid; transition: background-color .14s ease, border-color .14s ease, color .14s ease, box-shadow .08s ease, transform .08s ease; }
+.track-choice-actions .track-init-button { color: #174f78; border-color: #6e9fbe; background: #e6f1f8; }
+.track-choice-actions .track-renew-button { color: #225f57; border-color: #6ca69c; background: #e5f3f0; }
+@media (hover: hover) and (pointer: fine) {
+  .track-choice-actions .track-init-button:hover { color: #174f78; border-color: #3f7fa8; background: #d6e9f5; }
+  .track-choice-actions .track-renew-button:hover { color: #225f57; border-color: #438b7f; background: #d3ebe6; }
+}
+.track-choice-actions .track-init-button:active { color: #fff; border-color: #174f78; background: #174f78; box-shadow: inset 0 2px 4px #092f4873; transform: translateY(1px); transition-duration: 0s; }
+.track-choice-actions .track-renew-button:active { color: #fff; border-color: #225f57; background: #225f57; box-shadow: inset 0 2px 4px #123d3773; transform: translateY(1px); transition-duration: 0s; }
 .load-error-message { margin: 1rem 0 0; padding: .75rem; color: #963838; border-radius: 8px; background: #fff0ed; font-weight: 700; }
 
 @media (min-width: 760px) {
