@@ -3,11 +3,13 @@ import { annotateQuestionText, ignoredQuestionKeys, questionAnnotationMap, quest
 import { aggregateMockChapterPerformance, chapterLearningPerformance, clearHistory, clearMockAttempts, readHistory, recordMockAttempt, recordPracticeAnswer, writeHistory } from './history'
 import { clearStoredSession, hydrateStoredSession, questionBankSignature, readStoredSession, writeStoredSession, type BankKey } from './session'
 import { formatRemaining, remainingSeconds, shouldAutoSubmit } from './timer'
+import type { ExamProfile } from './exam-profiles'
+import { initMobileMenu, renderPrimaryHeader, type NavigationRoutes } from './navigation'
 
 type Mode = 'practice' | 'chapter-select' | 'mock-start' | 'mock' | 'result' | 'review'
 type ChapterOrder = 'random' | 'sequential'
-type AppRoutes = { home: string; practice: string; chapter: string; mock: string; wrong: string; about: string }
-type InitRentAppOptions = { routes?: AppRoutes; bankLabel?: string; bankKey?: BankKey; initialView?: 'practice' | 'chapter' | 'mock' | 'wrong'; annotations?: QuestionAnnotationsDocument }
+type AppRoutes = NavigationRoutes
+type InitRentAppOptions = { profile?: ExamProfile; routes?: AppRoutes; bankLabel?: string; bankKey?: BankKey; initialView?: 'practice' | 'chapter' | 'mock' | 'wrong'; annotations?: QuestionAnnotationsDocument }
 
 const escapeHtml = (value: string) => value.replace(/[&<>'"]/g, (character) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' })[character]!)
 const button = (action: string, label: string, extra = '') => `<button type="button" class="button" data-action="${action}" ${extra}>${label}</button>`
@@ -16,6 +18,9 @@ export function initRentApp(root: HTMLElement, questions: Question[], options: I
   const routes = options.routes ?? { home: '/', practice: '/practice/', chapter: '/practice/chapter/', mock: '/mock/', wrong: '/wrong/', about: '/about/' }
   const initialView = options.initialView ?? 'practice'
   const bankKey = options.bankKey ?? 'withLaw'
+  const sessionKey = options.profile?.storage.session
+  const historyKey = options.profile?.storage.history
+  const mockEnabled = options.profile?.mockExam.enabled ?? true
   const annotations = options.annotations ?? { schema_version: 1, updated_at: '1970-01-01', annotations: [] }
   const annotationsByKey = questionAnnotationMap(annotations)
   const ignoredKeys = ignoredQuestionKeys(annotations)
@@ -23,15 +28,16 @@ export function initRentApp(root: HTMLElement, questions: Question[], options: I
   const bankSignature = questionBankSignature(questions, annotationSignature)
   const questionChapterByKey = new Map(questions.map((question) => [questionKey(question), question.chapter_no]))
   const validQuestionKeys = new Set(questionChapterByKey.keys())
+  const availableChapters = [...new Set(questions.map((question) => question.chapter_no))].sort((left, right) => left - right)
   const readCurrentHistory = () => {
-    const history = readHistory()
+    const history = readHistory(historyKey)
     const wrongKeys = history.wrongKeys.filter((key) => validQuestionKeys.has(key))
     if (wrongKeys.length === history.wrongKeys.length) return history
     const cleaned = { ...history, wrongKeys }
-    writeHistory(cleaned)
+    writeHistory(cleaned, historyKey)
     return cleaned
   }
-  let mode: Mode = initialView === 'chapter' ? 'chapter-select' : initialView === 'mock' ? 'mock-start' : initialView === 'wrong' ? 'review' : 'practice'
+  let mode: Mode = initialView === 'chapter' ? 'chapter-select' : initialView === 'mock' && mockEnabled ? 'mock-start' : initialView === 'wrong' ? 'review' : 'practice'
   let practiceQuestions = selectQuestions(questions, { count: questions.length })
   let practiceIndex = 0
   let selectedAnswer: string | undefined
@@ -56,7 +62,7 @@ export function initRentApp(root: HTMLElement, questions: Question[], options: I
   let examRecorded = false
   let settingsCollapsed = true
 
-  const storedSession = readStoredSession()
+  const storedSession = readStoredSession(sessionKey)
   const hydratedSession = hydrateStoredSession(storedSession, questions, bankKey, initialView, annotationSignature, ignoredKeys)
   const currentWrongKeys = new Set(readCurrentHistory().wrongKeys)
   const expectedWrongSessionKeys = hydratedSession?.kind === 'practice' && hydratedSession.view === 'wrong'
@@ -96,7 +102,7 @@ export function initRentApp(root: HTMLElement, questions: Question[], options: I
     examAttemptId = restoredSession.attemptId
     examRecorded = false
   } else if (storedSession?.view === initialView) {
-    clearStoredSession()
+    clearStoredSession(sessionKey)
   }
 
   const currentPractice = () => practiceQuestions[practiceIndex]
@@ -117,7 +123,7 @@ export function initRentApp(root: HTMLElement, questions: Question[], options: I
       chapterOrder,
       settingsCollapsed,
       updatedAt: Date.now(),
-    })
+    }, sessionKey)
   }
   const saveCurrentMockSession = () => {
     if (mode !== 'mock' || examQuestions.length !== 100 || !examStartedAt) return
@@ -134,7 +140,7 @@ export function initRentApp(root: HTMLElement, questions: Question[], options: I
       attemptId: examAttemptId,
       startedAt: examStartedAt,
       updatedAt: Date.now(),
-    })
+    }, sessionKey)
   }
   const savePractice = () => {
     const current = currentPractice()
@@ -143,7 +149,7 @@ export function initRentApp(root: HTMLElement, questions: Question[], options: I
       key: questionKey(current),
       chapter: current.chapter_no,
       correct: isCorrect,
-    }))
+    }), historyKey)
   }
   const saveExam = () => {
     if (examRecorded) return
@@ -172,11 +178,11 @@ export function initRentApp(root: HTMLElement, questions: Question[], options: I
           correct: Boolean(answer) && answer === question.answer,
         }
       }),
-    }))
+    }), historyKey)
     examRecorded = true
   }
   const stopTimer = () => { if (timerId !== undefined) clearInterval(timerId); timerId = undefined }
-  const renderHeader = () => `<header class="brand"><a class="brand-home" href="${escapeHtml(routes.home)}" aria-label="返回入口">租賃住宅管理人員證照題庫練習</a><strong>Rental Housing Manager</strong><button type="button" class="mobile-menu-toggle" data-action="toggle-mobile-menu" aria-label="開啟選單" aria-expanded="false" aria-controls="primary-nav"><span class="hamburger-icon" aria-hidden="true"><span class="hamburger-line"></span><span class="hamburger-line"></span><span class="hamburger-line"></span></span></button><small>Practice • Mock Exam • Review${options.bankLabel ? `・目前：${escapeHtml(options.bankLabel)}` : ''}</small><nav id="primary-nav" class="primary-nav" aria-label="主要導覽"><a href="${escapeHtml(routes.practice)}">全題練習</a><a href="${escapeHtml(routes.chapter)}">章節練習</a><a href="${escapeHtml(routes.mock)}">模擬考</a><a href="${escapeHtml(routes.wrong)}">錯題回顧</a><a href="${escapeHtml(routes.about)}">關於本站</a><a href="${escapeHtml(routes.home)}">更換題庫</a></nav></header>`
+  const renderHeader = () => renderPrimaryHeader({ routes, mockEnabled, bankLabel: options.bankLabel })
   const renderOptions = (question: Question, answer?: string, reveal = false) => `<div class="options">${question.options.map((option) => {
     const selected = answer === option.id
     const correctness = reveal ? (option.id === question.answer ? ' is-correct' : selected ? ' is-wrong' : '') : selected ? ' is-selected' : ''
@@ -208,7 +214,7 @@ export function initRentApp(root: HTMLElement, questions: Question[], options: I
   const renderPractice = () => {
     const current = currentPractice()
     if (!current) {
-      clearStoredSession()
+      clearStoredSession(sessionKey)
       root.innerHTML = `${renderHeader()}<section class="card"><h1>${practiceLabel}</h1><p>此題組已完成。請重新選擇練習方式。</p>${button('start-all-practice', '重新開始全題庫練習')}</section>`
       bind()
       return
@@ -243,7 +249,7 @@ export function initRentApp(root: HTMLElement, questions: Question[], options: I
   const renderReview = () => {
     const history = readCurrentHistory()
     const rate = history.answered ? Math.round(history.correct / history.answered * 100) : 0
-    const chapterPerformance = chapterLearningPerformance(history)
+    const chapterPerformance = chapterLearningPerformance(history, availableChapters)
     root.innerHTML = `${renderHeader()}<main class="single-column"><section class="card"><h1>錯題回顧</h1><p>作答紀錄僅保存在此瀏覽器。歷史答錯率會累計每次已作答結果；「目前錯題」則會在之後答對同題時解除。</p><dl><dt>累計作答</dt><dd>累計作答：${history.answered}</dd><dt>正確率</dt><dd>${rate}%</dd><dt>錯題</dt><dd>錯題數：${history.wrongKeys.length}</dd></dl><div class="action-group">${button('practice-wrongs', '練習全部錯題', history.wrongKeys.length ? '' : 'disabled')}${button('reset-history', '重設本機紀錄')}<a class="button secondary-button" href="${escapeHtml(routes.practice)}">返回練習</a></div></section><section class="card history-panel"><p class="eyebrow">Chapter Review</p><h2>各章錯誤狀況</h2><div class="wrong-chapter-grid">${chapterPerformance.map((item) => `<article class="wrong-chapter-card" data-wrong-chapter-summary="${item.chapter}"><h3>第 ${item.chapter} 章</h3><p>歷史答錯率 <strong>${item.wrongRate}%</strong>（${item.wrong} / ${item.answered}）</p><progress max="100" value="${item.wrongRate}" aria-label="第 ${item.chapter} 章歷史答錯率 ${item.wrongRate}%"></progress><p>目前錯題 <strong>${item.currentWrong} 題</strong></p>${button('practice-wrong-chapter', `練習第 ${item.chapter} 章錯題`, `data-wrong-chapter="${item.chapter}" ${item.currentWrong ? '' : 'disabled'}`)}</article>`).join('')}</div></section></main>`
     bind()
   }
@@ -281,7 +287,7 @@ export function initRentApp(root: HTMLElement, questions: Question[], options: I
     if (mode !== 'mock') return
     stopTimer()
     saveExam()
-    clearStoredSession()
+    clearStoredSession(sessionKey)
     confirmingSubmit = false
     mode = 'result'
     render()
@@ -297,6 +303,7 @@ export function initRentApp(root: HTMLElement, questions: Question[], options: I
     }, 1000)
   }
   const bind = () => {
+    initMobileMenu(root)
     root.querySelectorAll<HTMLButtonElement>('[data-option]').forEach((element) => element.addEventListener('click', () => {
       if (mode === 'result' || (mode === 'practice' && checked)) return
       if (mode === 'mock') {
@@ -331,15 +338,7 @@ export function initRentApp(root: HTMLElement, questions: Question[], options: I
     }))
     root.querySelectorAll<HTMLElement>('[data-action]').forEach((element) => element.addEventListener('click', () => {
       const action = element.dataset.action
-      if (action === 'toggle-mobile-menu') {
-        const navigation = root.querySelector<HTMLElement>('#primary-nav')
-        const expanded = element.getAttribute('aria-expanded') === 'true'
-        const nextExpanded = !expanded
-        element.setAttribute('aria-expanded', String(nextExpanded))
-        element.setAttribute('aria-label', nextExpanded ? '關閉選單' : '開啟選單')
-        navigation?.classList.toggle('is-open', nextExpanded)
-        return
-      }
+
       if (action === 'toggle-settings') {
         settingsCollapsed = !settingsCollapsed
         const settings = root.querySelector<HTMLElement>('#practice-settings')
@@ -361,7 +360,7 @@ export function initRentApp(root: HTMLElement, questions: Question[], options: I
       if (action === 'clear-mock-history') { confirmingClearMockHistory = true; render() }
       if (action === 'cancel-clear-mock-history') { confirmingClearMockHistory = false; render() }
       if (action === 'confirm-clear-mock-history') {
-        writeHistory(clearMockAttempts(readCurrentHistory()))
+        writeHistory(clearMockAttempts(readCurrentHistory()), historyKey)
         confirmingClearMockHistory = false
         render()
       }
@@ -417,8 +416,8 @@ export function initRentApp(root: HTMLElement, questions: Question[], options: I
       }
       if (action === 'practice-wrongs') startWrongPractice()
       if (action === 'practice-wrong-chapter') startWrongPractice(Number(element.dataset.wrongChapter))
-      if (action === 'return-wrong-review') { clearStoredSession(); mode = 'review'; render() }
-      if (action === 'reset-history') { clearHistory(); render() }
+      if (action === 'return-wrong-review') { clearStoredSession(sessionKey); mode = 'review'; render() }
+      if (action === 'reset-history') { clearHistory(historyKey); render() }
     }))
   }
   render()

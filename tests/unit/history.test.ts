@@ -166,4 +166,10 @@ describe('本機學習歷史', () => {
       currentWrong: 0,
     })
   })
+
+  it('可依題庫實際章節動態產生錯題摘要，不補上不存在的空章節', () => {
+    const history = recordPracticeAnswer(emptyHistory(), { key: 'c2-s1-q1', chapter: 2, correct: false })
+    expect(chapterLearningPerformance(history, [1, 2, 3]).map((item) => item.chapter)).toEqual([1, 2, 3])
+    expect(chapterLearningPerformance(history, [3, 2, 2, 1]).find((item) => item.chapter === 2)?.currentWrong).toBe(1)
+  })
 })

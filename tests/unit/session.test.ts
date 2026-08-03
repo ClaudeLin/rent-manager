@@ -80,6 +80,11 @@ describe('中斷續作 session contract', () => {
     })
   })
 
+  it('可用 profile base path 產生隔離 track 的續作連結', () => {
+    expect(sessionSummary(validPractice, '/renew').route).toBe('/renew/practice/chapter/')
+    expect(sessionSummary({ ...validPractice, view: 'practice', chapterNo: null }, '/init').route).toBe('/init/practice/')
+  })
+
   it('指定章節錯題 session 只接受同章題目，續作摘要保留章節', () => {
     const wrongSession: StoredPracticeSession = {
       ...validPractice,

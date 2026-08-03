@@ -1,0 +1,6 @@
+---
+import '../styles/app.css'
+import OfflineNotice from './OfflineNotice.astro'
+const { track, view = 'practice' } = Astro.props
+---
+<!doctype html><html lang="zh-Hant-TW"><head><meta charset="UTF-8" /><meta name="viewport" content="width=device-width, initial-scale=1" /><meta name="theme-color" content="#143b63" /><link rel="icon" type="image/svg+xml" href="/favicon.svg" /><link rel="manifest" href="/manifest.webmanifest" /><title>租賃住宅管理人員題庫</title></head><body><main id="app" data-track={track} data-view={view} aria-live="polite"></main><OfflineNotice /><script>import { bootstrapExamPage } from '../lib/bootstrap'; const root = document.querySelector<HTMLElement>('#app')!; void bootstrapExamPage(root, root.dataset.track as 'init' | 'renew', root.dataset.view as 'practice' | 'chapter' | 'mock' | 'wrong')</script></body></html>

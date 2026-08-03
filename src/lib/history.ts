@@ -235,9 +235,9 @@ export function aggregateMockChapterPerformance(historyValue: History): MockChap
   })
 }
 
-export function chapterLearningPerformance(historyValue: History): ChapterLearningPerformance[] {
+export function chapterLearningPerformance(historyValue: History, chapters: readonly number[] = Array.from({ length: 10 }, (_, index) => index + 1)): ChapterLearningPerformance[] {
   const history = parseHistory(historyValue)
-  return Array.from({ length: 10 }, (_, index) => index + 1).map((chapter) => {
+  return [...new Set(chapters)].filter((chapter) => Number.isInteger(chapter) && chapter >= 1 && chapter <= 10).sort((left, right) => left - right).map((chapter) => {
     const stat = history.chapterStats[String(chapter)] ?? { answered: 0, correct: 0 }
     const wrong = stat.answered - stat.correct
     const currentWrong = history.wrongKeys.filter((key) => key.startsWith(`c${chapter}-`)).length
@@ -251,25 +251,25 @@ export function chapterLearningPerformance(historyValue: History): ChapterLearni
   })
 }
 
-export function readHistory(): History {
+export function readHistory(storageKey = HISTORY_KEY): History {
   try {
-    return parseHistory(JSON.parse(localStorage.getItem(HISTORY_KEY) ?? 'null'))
+    return parseHistory(JSON.parse(localStorage.getItem(storageKey) ?? 'null'))
   } catch {
     return emptyHistory()
   }
 }
 
-export function writeHistory(history: History): void {
+export function writeHistory(history: History, storageKey = HISTORY_KEY): void {
   try {
-    localStorage.setItem(HISTORY_KEY, JSON.stringify(parseHistory(history)))
+    localStorage.setItem(storageKey, JSON.stringify(parseHistory(history)))
   } catch {
     // Storage may be unavailable in restricted contexts.
   }
 }
 
-export function clearHistory(): void {
+export function clearHistory(storageKey = HISTORY_KEY): void {
   try {
-    localStorage.removeItem(HISTORY_KEY)
+    localStorage.removeItem(storageKey)
   } catch {
     // Storage may be unavailable in restricted contexts.
   }

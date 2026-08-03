@@ -123,6 +123,7 @@ def parse_options(text: str):
 
 def normalize_answer(text: str) -> str:
     normalized = text.replace("（", "(").replace("）", ")")
+    normalized = re.sub(r"答案$", "", normalized.strip())
     normalized = re.sub(r"^[)\s]+", "", normalized)
     match = ANSWER.fullmatch(normalized)
     return match.group(1).translate(FULLWIDTH_TO_ASCII) if match else ""

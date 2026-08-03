@@ -109,6 +109,7 @@ dl { display: grid; grid-template-columns: 1fr auto; gap: .6rem; } dt, dd { marg
 .question-bank-choice > p:not(.eyebrow):not(.load-error-message) { margin: 0; color: #425568; }
 .question-bank-actions { display: grid; gap: .75rem; margin-top: 1.4rem; }
 .question-bank-actions .button { width: 100%; min-height: 52px; }
+.track-switch-link { display: block; width: fit-content; min-height: 44px; margin: .9rem auto 0; padding: .6rem .8rem; color: #105f9a; font-weight: 800; text-underline-offset: .16em; }
 .resume-card { margin: 1.2rem 0; padding: 1rem; border: 1px solid #a8c5dc; border-left: 5px solid #1769aa; border-radius: 12px; background: #eef6fb; }
 .resume-card h2 { margin: .15rem 0 .35rem; color: #143b63; font-size: 1.15rem; }
 .resume-card p { margin: 0; }

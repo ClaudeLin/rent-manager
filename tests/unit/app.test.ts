@@ -58,7 +58,7 @@ afterEach(() => {
 describe('租賃題庫操作介面', () => {
   it('Header 顯示證照題庫標題，漢堡按鈕可切換導覽與可及性狀態', () => {
     mount()
-    const menu = document.querySelector<HTMLButtonElement>('[data-action="toggle-mobile-menu"]')!
+    const menu = document.querySelector<HTMLButtonElement>('[data-mobile-menu-toggle]')!
     const navigation = document.querySelector<HTMLElement>('#primary-nav')!
     expect(document.querySelector('.brand-home')!.textContent).toContain('租賃住宅管理人員證照題庫練習')
     expect(menu.querySelectorAll('.hamburger-line')).toHaveLength(3)
@@ -574,7 +574,8 @@ describe('租賃題庫操作介面', () => {
     expect(document.body.textContent).toContain('累計作答：0')
     expect(document.body.textContent).toContain('正確率0%')
     expect(document.body.textContent).toContain('錯題數：1')
-    expect(document.querySelector<HTMLButtonElement>('[data-wrong-chapter="9"]')?.disabled).toBe(true)
+    expect(document.querySelector('[data-wrong-chapter="9"]')).toBeNull()
+    expect(document.querySelector<HTMLButtonElement>('[data-wrong-chapter="1"]')?.disabled).toBe(false)
     expect(JSON.parse(localStorage.getItem('rent-exam-history-v1')!).wrongKeys).toEqual(['c1-s1-q1'])
   })
 })

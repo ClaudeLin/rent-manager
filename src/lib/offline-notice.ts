@@ -1,26 +1,15 @@
 import type { ServiceWorkerStatus } from './pwa'
+import { registerServiceWorker } from './pwa'
 
 type OfflineNoticeStatus = Exclude<ServiceWorkerStatus, 'existing'>
 
 const timers = new WeakMap<HTMLElement, ReturnType<typeof setTimeout>>()
 
 const content: Record<OfflineNoticeStatus, { icon: string; message: string }> = {
-  ready: {
-    icon: '✓',
-    message: '離線資料已準備完成，可加入手機主畫面捷徑後離線使用。',
-  },
-  updated: {
-    icon: '✓',
-    message: '新版離線資料已更新完成。',
-  },
-  unsupported: {
-    icon: 'i',
-    message: '目前瀏覽器不支援離線安裝。',
-  },
-  failed: {
-    icon: '!',
-    message: '離線資料準備失敗，使用時請保持網路連線，以獲得最佳體驗。',
-  },
+  ready: { icon: '✓', message: '離線資料已準備完成，可加入手機主畫面捷徑後離線使用。' },
+  updated: { icon: '✓', message: '新版離線資料已更新完成。' },
+  unsupported: { icon: 'i', message: '目前瀏覽器不支援離線安裝。' },
+  failed: { icon: '!', message: '離線資料準備失敗，使用時請保持網路連線，以獲得最佳體驗。' },
 }
 
 export function dismissOfflineNotice(notice: HTMLElement): void {
@@ -45,8 +34,12 @@ export function showOfflineNotice(notice: HTMLElement, status: OfflineNoticeStat
   notice.hidden = false
   notice.classList.add('is-visible')
 
-  if (status === 'ready' || status === 'updated') {
-    const timer = setTimeout(() => dismissOfflineNotice(notice), durationMs)
-    timers.set(notice, timer)
-  }
+  if (status === 'ready' || status === 'updated') timers.set(notice, setTimeout(() => dismissOfflineNotice(notice), durationMs))
+}
+
+export function initOfflineNotice(notice = document.querySelector<HTMLElement>('[data-offline-notice]')): void {
+  if (!notice) return
+  void registerServiceWorker().then((status) => {
+    if (status !== 'existing') showOfflineNotice(notice, status)
+  })
 }

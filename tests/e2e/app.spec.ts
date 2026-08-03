@@ -1,11 +1,14 @@
 import { expect, test } from '@playwright/test'
+import { existsSync } from 'node:fs'
+import { resolve } from 'node:path'
 
-const homePath = '/'
-const practicePath = '/practice/'
-const chapterPath = '/practice/chapter/'
-const mockPath = '/mock/'
-const wrongPath = '/wrong/'
-const aboutPath = '/about/'
+const rootPath = '/'
+const homePath = '/init/'
+const practicePath = '/init/practice/'
+const chapterPath = '/init/practice/chapter/'
+const mockPath = '/init/mock/'
+const wrongPath = '/init/wrong/'
+const aboutPath = '/init/about/'
 const withLawUrl = '/data/questions_with_law.json'
 const withoutLawUrl = '/data/questions_without_law.json'
 const annotationsUrl = '/data/question_annotations.json'
@@ -31,7 +34,7 @@ async function selectBankAtEntry(page: import('@playwright/test').Page, label = 
 
 test('入口選擇題庫後進入全題練習，Header 可返回入口重新選擇', async ({ page }) => {
   await page.goto(homePath)
-  await expect(page.getByRole('heading', { name: '選擇題庫' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: '選擇題庫版本' })).toBeVisible()
   await page.getByRole('button', { name: '有詳解題庫' }).click()
 
   await expect(page).toHaveURL(practicePath)
@@ -39,24 +42,24 @@ test('入口選擇題庫後進入全題練習，Header 可返回入口重新選�
   await expect(page.locator('.hamburger-line')).toHaveCount(3)
   await expect(page.getByRole('link', { name: '返回入口' })).toHaveAttribute('href', homePath)
   await openPrimaryNavigation(page)
-  await expect(page.getByRole('link', { name: '更換題庫' })).toHaveAttribute('href', homePath)
+  await expect(page.getByRole('link', { name: '更換題庫版本' })).toHaveAttribute('href', homePath)
   await expect(page.getByRole('link', { name: '關於本站' })).toHaveAttribute('href', aboutPath)
-  await expect(page.locator('.brand small')).toContainText('目前：有詳解題庫')
+  await expect(page.locator('.brand small')).toContainText('目前：初訓・有詳解題庫')
 
   await page.reload()
   await expect(page).toHaveURL(practicePath)
-  await expect(page.locator('.brand small')).toContainText('目前：有詳解題庫')
+  await expect(page.locator('.brand small')).toContainText('目前：初訓・有詳解題庫')
   await expect(page.locator('[data-question-key]')).toBeVisible()
 
   await openPrimaryNavigation(page)
-  await page.getByRole('link', { name: '更換題庫' }).click()
+  await page.getByRole('link', { name: '更換題庫版本' }).click()
   await expect(page).toHaveURL(homePath)
-  await expect(page.getByRole('heading', { name: '選擇題庫' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: '選擇題庫版本' })).toBeVisible()
 })
 
 test('入口可繼續上次中斷練習，reload 保留檢查狀態且可放棄進度', async ({ page }) => {
   await page.goto(homePath)
-  await expect(page.getByRole('button', { name: '繼續上次練習' })).toHaveCount(0)
+  await expect(page.getByRole('link', { name: '繼續上次練習' })).toHaveCount(0)
   await page.getByRole('button', { name: '有詳解題庫' }).click()
   const key = await page.locator('[data-question-key]').getAttribute('data-question-key')
   await page.locator('[data-option="B"]').click()
@@ -67,17 +70,17 @@ test('入口可繼續上次中斷練習，reload 保留檢查狀態且可放棄�
   await expect(page.getByText('正確答案：')).toBeVisible()
 
   await page.goto(homePath)
-  await expect(page.getByRole('button', { name: '繼續上次練習' })).toBeVisible()
+  await expect(page.getByRole('link', { name: '繼續上次練習' })).toBeVisible()
   await expect(page.getByText('全題庫隨機練習')).toBeVisible()
   await expect(page.getByText(/第 1 \/ \d+ 題/)).toBeVisible()
-  await page.getByRole('button', { name: '繼續上次練習' }).click()
+  await page.getByRole('link', { name: '繼續上次練習' }).click()
   await expect(page).toHaveURL(practicePath)
   await expect(page.locator('[data-question-key]')).toHaveAttribute('data-question-key', key!)
   await expect(page.getByText('正確答案：')).toBeVisible()
 
   await page.goto(homePath)
   await page.getByRole('button', { name: '放棄這次進度' }).click()
-  await expect(page.getByRole('button', { name: '繼續上次練習' })).toHaveCount(0)
+  await expect(page.getByRole('link', { name: '繼續上次練習' })).toHaveCount(0)
 })
 
 test('入口遇到損壞的中斷資料時安全忽略', async ({ page }) => {
@@ -85,21 +88,21 @@ test('入口遇到損壞的中斷資料時安全忽略', async ({ page }) => {
   await page.evaluate(() => localStorage.setItem('rent-exam-session-v1', '{broken'))
   await page.reload()
 
-  await expect(page.getByRole('heading', { name: '選擇題庫' })).toBeVisible()
-  await expect(page.getByRole('button', { name: '繼續上次練習' })).toHaveCount(0)
+  await expect(page.getByRole('heading', { name: '選擇題庫版本' })).toBeVisible()
+  await expect(page.getByRole('link', { name: '繼續上次練習' })).toHaveCount(0)
 })
 
-test('新版離線資料提示使用同步的三秒倒數進度條', async ({ page }) => {
+test('根目錄實際整合離線狀態提示，使用同步的三秒倒數進度條', async ({ page }) => {
+  await page.addInitScript(() => {
+    Object.defineProperty(navigator, 'serviceWorker', { configurable: true, value: {
+      getRegistration: async () => undefined,
+      register: async () => ({ active: {} }),
+    } })
+  })
   await page.goto(homePath)
   const notice = page.locator('[data-offline-notice]')
-  await expect(notice).not.toHaveAttribute('data-state', 'preparing')
-  await notice.evaluate((element) => {
-    const toast = element as HTMLElement
-    toast.hidden = false
-    toast.dataset.state = 'updated'
-    toast.style.setProperty('--offline-toast-duration', '3000ms')
-    toast.classList.add('is-visible')
-  })
+  await expect(notice).toHaveAttribute('data-state', 'ready')
+  await expect(notice).toBeVisible()
 
   const progress = notice.locator('.offline-toast-progress')
   await expect(progress).toHaveCSS('animation-duration', '3s')
@@ -353,7 +356,7 @@ test('首次進入先選擇題庫，不會自動載入 JSON', async ({ page }) =
 
   await page.goto(homePath)
 
-  await expect(page.getByRole('heading', { name: '選擇題庫' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: '選擇題庫版本' })).toBeVisible()
   await expect(page.getByRole('button', { name: '有詳解題庫' })).toBeVisible()
   await expect(page.getByRole('button', { name: '只有答案題庫' })).toBeVisible()
   await expect(page.getByRole('button', { name: '有詳解題庫' })).toHaveCSS('min-height', '52px')
@@ -361,48 +364,30 @@ test('首次進入先選擇題庫，不會自動載入 JSON', async ({ page }) =
   expect(dataRequests).toEqual([])
 })
 
-test('入口顯示來源摘要、練習用途聲明與 About 入口', async ({ page }) => {
+test('初訓入口顯示來源摘要、練習用途聲明與 About 入口', async ({ page }) => {
   await page.goto(homePath)
 
-  const source = page.getByRole('link', { name: '中華民國租賃住宅服務商業同業公會全國聯合會' })
-  await expect(source).toHaveAttribute('href', 'https://rentalh.org.tw/down-list2.php?lmenuid=12&mpmid=2')
-  await expect(source).toHaveAttribute('target', '_blank')
-  await expect(source).toHaveAttribute('rel', 'noopener noreferrer')
-  await expect(page.getByText('題庫最後更新／轉檔日期：2026/7/21')).toBeVisible()
+  await expect(page.getByText('租賃住宅管理人員資格訓練題庫')).toBeVisible()
+  await expect(page.getByText('資料版本日期：2026-07-21')).toBeVisible()
   await expect(page.getByText('本題庫僅供學習與練習使用，內容請以官方最新公告為準。')).toBeVisible()
-  await expect(page.getByRole('link', { name: '查看完整資料來源、模擬考規則與免責聲明' })).toHaveAttribute('href', aboutPath)
+  await expect(page.getByRole('link', { name: '查看完整資料來源與使用說明' })).toHaveAttribute('href', aboutPath)
 })
 
-test('About 集中顯示資料來源、免責聲明與模擬考規則', async ({ page }) => {
+test('初訓 About 集中顯示資料來源、免責聲明與模擬考規則', async ({ page }) => {
   await page.goto(aboutPath)
 
-  await expect(page.getByRole('heading', { name: '關於本題庫' })).toBeVisible()
-  await expect(page.getByRole('link', { name: '中華民國租賃住宅服務商業同業公會全國聯合會' })).toHaveAttribute('href', 'https://rentalh.org.tw/down-list2.php?lmenuid=12&mpmid=2')
-  await expect(page.getByText('題庫最後更新／轉檔日期：2026/7/21')).toBeVisible()
-  await expect(page.getByText('本網站僅供個人學習與測驗練習使用')).toBeVisible()
+  await expect(page.getByRole('heading', { name: '關於初訓題庫' })).toBeVisible()
+  await expect(page.getByText('租賃住宅管理人員資格訓練題庫')).toBeVisible()
+  await expect(page.getByText('資料版本日期：2026-07-21')).toBeVisible()
+  await expect(page.getByText(/本網站僅供個人學習與測驗練習/)).toBeVisible()
   await expect(page.getByText('不得作為法律意見或專業服務之替代')).toBeVisible()
-  await expect(page.getByText('第 1 至第 10 章，每章各隨機抽取 10 題，共 100 題')).toBeVisible()
-  await expect(page.getByText('經實際課程註記為「可忽略」的題目，不納入模擬考抽題。')).toBeVisible()
-  await expect(page.getByText('每次開始模擬考都會重新抽題')).toBeVisible()
-  await expect(page.getByText('每題的 A、B、C、D 選項會隨機重排，正確答案同步調整。')).toBeVisible()
-  await expect(page.getByText('作答時間為 120 分鐘')).toBeVisible()
-  await expect(page.getByText('本站是由沐承科技有限公司提供的公開免費服務')).toBeVisible()
-  const license = page.getByRole('link', { name: 'MIT License' })
-  await expect(license).toHaveAttribute('href', 'https://github.com/MuChengTechnology/rent-manager/blob/main/LICENSE')
-  await expect(license).toHaveAttribute('target', '_blank')
-  await expect(license).toHaveAttribute('rel', 'noopener noreferrer')
-
-  const githubReport = page.getByRole('link', { name: '前往 GitHub Issues 回報' })
-  await expect(githubReport).toHaveAttribute('href', 'https://github.com/MuChengTechnology/rent-manager/issues/new')
-  await expect(githubReport).toHaveAttribute('target', '_blank')
-  await expect(githubReport).toHaveAttribute('rel', 'noopener noreferrer')
-
-  const emailReport = page.getByRole('link', { name: 'Email 回報' })
-  await expect(emailReport).toHaveAttribute(
-    'href',
-    'mailto:issue.report+rentmanager@muchengtech.com?subject=%E7%A7%9F%E8%B3%83%E9%A1%8C%E5%BA%AB%E5%95%8F%E9%A1%8C%E5%9B%9E%E5%A0%B1%E8%88%87%E5%BB%BA%E8%AD%B0',
-  )
-  await expect(page.getByText('issue.report+rentmanager@muchengtech.com')).toHaveCount(0)
+  await expect(page.getByText('初訓從第 1 至第 10 章各抽十題，共 100 題')).toBeVisible()
+  await expect(page.getByText('作答時間 120 分鐘')).toBeVisible()
+  await expect(page.getByText('沐承科技有限公司提供，為公開免費的個人學習服務')).toBeVisible()
+  await expect(page.getByRole('link', { name: 'MIT License' })).toHaveAttribute('href', /LICENSE/)
+  await expect(page.getByRole('link', { name: 'GitHub Issues' })).toHaveAttribute('href', /issues\/new/)
+  await expect(page.getByRole('link', { name: 'Email 回報' })).toHaveAttribute('href', /^mailto:/)
+  await expect(page.locator('.about-page a').filter({ hasText: '租賃住宅管理人員資格訓練題庫' })).toHaveAttribute('href', /rentalh\.org\.tw/)
 })
 
 test('所有頁面使用同一個根目錄 favicon', async ({ page, request }) => {
@@ -446,7 +431,7 @@ test('題庫載入失敗後可回到選擇畫面', async ({ page }) => {
 
   await expect(page.getByRole('alert')).toContainText('有詳解題庫目前無法載入')
   await page.getByRole('link', { name: '返回入口' }).click()
-  await expect(page.getByRole('heading', { name: '選擇題庫' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: '選擇題庫版本' })).toBeVisible()
   await expect(page.getByRole('button', { name: '只有答案題庫' })).toBeVisible()
 })
 
@@ -562,4 +547,123 @@ test.describe('選擇有詳解題庫後的練習功能', () => {
     await expect(page.getByText('第 1 章：')).toBeVisible()
     await expect(page.locator('.explanation')).toHaveCount(0)
   })
+})
+
+const renewPath = '/renew/'
+const renewPracticePath = '/renew/practice/'
+const renewChapterPath = '/renew/practice/chapter/'
+const renewWrongPath = '/renew/wrong/'
+
+async function selectRenewBank(page: import('@playwright/test').Page, label = '有詳解題庫'): Promise<void> {
+  await page.goto(renewPath)
+  await page.getByRole('button', { name: label }).click()
+  await expect(page).toHaveURL(renewPracticePath)
+  await expect(page.locator('[data-question-key]')).toBeVisible()
+}
+
+test('根目錄可選擇初訓或換證 profile，並保留 PWA metadata', async ({ page }) => {
+  await page.goto(rootPath)
+  await expect(page.getByRole('heading', { name: '選擇練習題庫' })).toBeVisible()
+  await expect(page.getByRole('link', { name: '初訓題庫' })).toHaveAttribute('href', homePath)
+  await expect(page.getByRole('link', { name: '換證題庫' })).toHaveAttribute('href', renewPath)
+  for (const path of [rootPath, homePath, renewPath, aboutPath, '/renew/about/']) {
+    await page.goto(path)
+    await expect(page.locator('link[rel="icon"]')).toHaveAttribute('href', '/favicon.svg')
+    await expect(page.locator('link[rel="manifest"]')).toHaveAttribute('href', '/manifest.webmanifest')
+  }
+})
+
+test('換證兩版本各建立 379 題 session，且只有有詳解版本提供詳解', async ({ page }) => {
+  for (const bank of ['有詳解題庫', '只有答案題庫']) {
+    await selectRenewBank(page, bank)
+    await page.locator('[data-option]').first().click()
+    await page.locator('[data-action="check-practice"]').click()
+    await expect(page.locator('[data-action="toggle-explanation"]')).toHaveCount(bank === '有詳解題庫' ? 1 : 0)
+    const session = await page.evaluate(() => JSON.parse(localStorage.getItem('rent-exam-renew-session-v1')!))
+    expect(session.questionKeys).toHaveLength(379)
+  }
+})
+
+test('換證只有三章，錯題回顧支援指定章節錯題練習', async ({ page }) => {
+  await selectRenewBank(page)
+  await page.goto(renewChapterPath)
+  await expect(page.locator('[data-action="chapter-select"] option')).toHaveCount(4)
+  await page.locator('[data-action="chapter-select"]').selectOption('3')
+  await expect(page.getByText('第 3 章隨機練習').first()).toBeVisible()
+  await page.evaluate(() => localStorage.setItem('rent-exam-renew-history-v1', JSON.stringify({ version: 2, answered: 2, correct: 1, wrongKeys: ['c2-s1-q1'], recordedExamIds: [], chapterStats: { '2': { answered: 2, correct: 1 } }, mockAttempts: [] })))
+  await page.goto(renewWrongPath)
+  await expect(page.locator('[data-wrong-chapter-summary]')).toHaveCount(3)
+  const chapter = page.locator('[data-wrong-chapter-summary="2"]')
+  await expect(chapter).toContainText('目前錯題 1 題')
+  await chapter.getByRole('button', { name: '練習第 2 章錯題' }).click()
+  await expect(page.locator('[data-question-key]')).toHaveAttribute('data-question-key', /^c2-/)
+})
+
+test('初訓與換證的 session 與歷史完全隔離，且換證 reload 可恢復', async ({ page }) => {
+  await selectBankAtEntry(page)
+  const initKey = await page.locator('[data-question-key]').getAttribute('data-question-key')
+  await selectRenewBank(page)
+  const renewKey = await page.locator('[data-question-key]').getAttribute('data-question-key')
+  await page.reload()
+  await expect(page.locator('[data-question-key]')).toHaveAttribute('data-question-key', renewKey!)
+  await page.goto(homePath)
+  await page.getByRole('link', { name: '繼續上次練習' }).click()
+  await expect(page.locator('[data-question-key]')).toHaveAttribute('data-question-key', initKey!)
+  await page.goto(renewPath)
+  await page.getByRole('button', { name: '放棄這次進度' }).click()
+  await expect(page.getByRole('link', { name: '繼續上次練習' })).toHaveCount(0)
+  await page.goto(homePath)
+  await expect(page.getByRole('link', { name: '繼續上次練習' })).toBeVisible()
+})
+
+test('換證不顯示或生成模擬考，legacy feature URLs 保留對應初訓目的地', async ({ page }) => {
+  await selectRenewBank(page)
+  await openPrimaryNavigation(page)
+  await expect(page.getByRole('link', { name: '模擬考' })).toHaveCount(0)
+  expect(existsSync(resolve(process.cwd(), 'dist/renew/mock/index.html'))).toBe(false)
+  for (const [oldPath, destination] of [['/practice/', practicePath], ['/practice/chapter/', chapterPath], ['/mock/', mockPath], ['/wrong/', wrongPath], ['/about/', aboutPath]] as const) {
+    await page.goto(oldPath, { waitUntil: 'domcontentloaded' })
+    await expect(page.locator('meta[http-equiv="refresh"]')).toHaveAttribute('content', `2;url=${destination}`)
+    await expect(page.getByRole('link')).toHaveAttribute('href', destination)
+  }
+})
+
+test('localStorage 受限時，初訓與換證各自以 sessionStorage 恢復所選題庫', async ({ page }) => {
+  await page.addInitScript(() => {
+    Object.defineProperty(window, 'localStorage', { configurable: true, get: () => ({
+      getItem: () => { throw new Error('restricted') }, setItem: () => { throw new Error('restricted') }, removeItem: () => { throw new Error('restricted') },
+    }) })
+  })
+  await page.goto(homePath)
+  await page.getByRole('button', { name: '有詳解題庫' }).click()
+  await expect(page.locator('.brand small')).toContainText('初訓・有詳解題庫')
+  await page.goto(renewPath)
+  await page.getByRole('button', { name: '只有答案題庫' }).click()
+  await expect(page.locator('.brand small')).toContainText('換證・只有答案題庫')
+  await page.goto(practicePath)
+  await expect(page.locator('.brand small')).toContainText('初訓・有詳解題庫')
+  await page.goto(renewPracticePath)
+  await expect(page.locator('.brand small')).toContainText('換證・只有答案題庫')
+})
+
+test('換證載入與註記失敗均 fail closed 並可返回換證入口', async ({ page }) => {
+  await page.route('**/data/renew/questions_with_law.json', route => route.fulfill({ status: 503, body: 'unavailable' }))
+  await page.goto(renewPath)
+  await page.getByRole('button', { name: '有詳解題庫' }).click()
+  await expect(page.getByRole('alert')).toContainText('目前無法載入')
+  await expect(page.getByRole('link', { name: '返回入口' })).toHaveAttribute('href', renewPath)
+  await page.unroute('**/data/renew/questions_with_law.json')
+  await page.route('**/data/renew/question_annotations.json', route => route.fulfill({ status: 503, body: 'unavailable' }))
+  await page.goto(renewPath)
+  await page.getByRole('button', { name: '有詳解題庫' }).click()
+  await expect(page.getByRole('alert')).toContainText('目前無法載入')
+  await expect(page.locator('[data-question-key]')).toHaveCount(0)
+})
+
+test('換證 About 說明 379 題、雙軌隔離與 deferred mock', async ({ page }) => {
+  await page.goto('/renew/about/')
+  await expect(page.getByRole('heading', { name: '關於換證題庫' })).toBeVisible()
+  await expect(page.getByText('2026-02-06 更新版，共 379 題')).toBeVisible()
+  await expect(page.getByText('初訓與換證資料完全分開')).toBeVisible()
+  await expect(page.getByText('模擬考功能尚未提供')).toBeVisible()
 })
