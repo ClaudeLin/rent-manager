@@ -1,0 +1,92 @@
+---
+const turnstileSiteKey = import.meta.env.PUBLIC_TURNSTILE_SITE_KEY ?? ''
+---
+<dialog class="report-dialog" data-report-dialog aria-labelledby="report-dialog-title" aria-describedby="report-dialog-description">
+  <form class="report-form" data-report-form data-endpoint="/api/forms/issue-report" novalidate>
+    <header class="report-dialog-heading">
+      <div>
+        <p class="eyebrow">Issue Report</p>
+        <h2 id="report-dialog-title">問題回報</h2>
+      </div>
+      <button type="button" class="report-dialog-close" data-report-close aria-label="關閉問題回報表單">×</button>
+    </header>
+    <p id="report-dialog-description">請描述遇到的問題；目前題庫、章節及題號已自動帶入下方欄位，仍可自行修改。請勿填入密碼、證件、付款資料或其他敏感個資。</p>
+
+    <div class="report-form-grid">
+      <label class="report-form-wide">問題類型
+        <select name="issueType" required>
+          <option value="">請選擇</option>
+          <option value="question">題目錯誤</option>
+          <option value="answer">答案或解析</option>
+          <option value="operation">網站操作</option>
+          <option value="display">顯示問題</option>
+          <option value="other">其他</option>
+        </select>
+      </label>
+      <label>題庫類型
+        <select name="track" data-report-track required>
+          <option value="" selected disabled>請選擇</option>
+          <option value="init">初訓</option>
+          <option value="renew">換證</option>
+        </select>
+      </label>
+      <label>題庫版本
+        <select name="bank" data-report-bank>
+          <option value="unknown">不確定／不適用</option>
+          <option value="withLaw">有詳解題庫</option>
+          <option value="withoutLaw">只有答案題庫</option>
+        </select>
+      </label>
+      <label>題目出現於
+        <select name="questionContext" data-report-question-context required>
+          <option value="random">全題隨機練習</option>
+          <option value="chapter">章節練習</option>
+          <option value="mock">模擬考</option>
+          <option value="wrong">錯題練習</option>
+          <option value="other">其他／不確定</option>
+        </select>
+      </label>
+      <label>章節（選填）
+        <select name="chapter" data-report-chapter>
+          <option value="">不確定／不適用</option>
+          {Array.from({ length: 10 }, (_, index) => <option value={String(index + 1)}>第 {index + 1} 章</option>)}
+        </select>
+      </label>
+      <label>第幾題（選填）
+        <input name="questionNumber" data-report-question-number inputmode="numeric" maxlength="4" pattern="[1-9][0-9]{0,3}" placeholder="例如：17" />
+      </label>
+      <label>您的稱呼
+        <input name="reporterName" required maxlength="80" autocomplete="name" placeholder="例如：王小明" />
+      </label>
+      <label>您的 Email
+        <input type="email" name="reporterEmail" required maxlength="254" autocomplete="email" placeholder="供我們回覆此回報" />
+      </label>
+      <label class="report-form-wide">問題描述
+        <textarea name="description" required minlength="10" maxlength="2000" rows="7" placeholder="請說明看到的內容、預期結果，以及問題發生方式。若是題目問題，也可附上建議答案或法源。"></textarea>
+      </label>
+      <label class="report-form-wide">附圖（選填）
+        <input type="file" name="attachment" accept="image/png,image/jpeg,image/webp" />
+        <small>限一張 PNG、JPEG 或 WebP，最大 1 MiB。請先遮蔽個人資料。</small>
+      </label>
+    </div>
+
+    <input type="hidden" name="questionId" data-report-question-id />
+    <input type="hidden" name="pagePath" data-report-page />
+    <label class="form-trap" inert>公司名稱<input name="company" tabindex="-1" autocomplete="off" /></label>
+    <label class="report-checkbox"><input type="checkbox" name="privacyConfirmed" required /> 我確認回報內容及附圖不含密碼、證件、付款資料或其他敏感個資</label>
+
+    {turnstileSiteKey && <div class="cf-turnstile" data-sitekey={turnstileSiteKey} data-action="issue-report"></div>}
+    <p class="report-alternative">也可改用 <a href="https://github.com/MuChengTechnology/rent-manager/issues/new">GitHub Issues</a> 公開回報與追蹤。</p>
+
+    <p class="report-form-status" data-report-status aria-live="polite" tabindex="-1" hidden></p>
+    <div class="report-form-actions">
+      <button type="submit" class="button">送出回報</button>
+      <button type="button" class="button secondary-button" data-report-close>取消</button>
+    </div>
+  </form>
+</dialog>
+{turnstileSiteKey && <script is:inline src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>}
+<script>
+  import { initReportForm } from '../lib/report-form'
+  initReportForm()
+</script>

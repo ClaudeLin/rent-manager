@@ -71,6 +71,22 @@ npm run preview
 - **Build command**：`npm run build`
 - **Build output directory**：`dist`
 
+### 站內問題回報設定
+
+站內表單與 GitHub Issues 會同時保留；前者方便非開發背景的使用者，後者仍是公開追蹤與開發協作管道。部署端需要提供五個值：
+
+| 名稱 | 設定位置 | 用途 |
+|---|---|---|
+| `PUBLIC_TURNSTILE_SITE_KEY` | 前端 build-time public variable | Turnstile 公開 Site Key |
+| `FORM_ALLOWED_ORIGIN` | Worker runtime variable | 唯一允許提交表單的完整 origin，例如 `https://example.com` |
+| `FORM_SENDER` | Worker runtime variable | Email Routing 已允許的系統寄件者 |
+| `TURNSTILE_SECRET_KEY` | Worker secret | 僅供 Worker 驗證 Turnstile，不可暴露到前端 |
+| `REPORT_MAIL` | Worker runtime variable | 接收問題回報的信箱 |
+
+Cloudflare Email Routing 的 Send Email binding 名稱固定為 `REPORT_EMAIL`；這是 Worker binding，不是第六個文字設定值。`wrangler.jsonc` 也已版本化 `REPORT_RATE_LIMIT` binding（每個來源 IP 每 60 秒最多 3 次，專案 namespace `1001`），同樣不需要另填文字值；若同一 Cloudflare 帳號已使用該 namespace ID，部署前改成另一個帳號內唯一的正整數即可。正式收寄件值不應寫入 `wrangler.jsonc`、原始碼或 commit。缺少任一必要設定或 binding 時，API 會回傳 `service_unavailable` 並維持 fail closed；前端只會告知回報未送出並保留填寫內容，不會顯示 Site Key、binding 或其他部署細節。
+
+表單使用同頁 `<dialog>`，會預填目前的初訓／換證、題庫版本、練習分類（全題隨機、章節、模擬考或錯題）、章節、目前顯示第幾題與頁面，但使用者仍可修改。內部題目識別碼只會隱藏附帶，不會顯示為一般使用者欄位。附圖限一張 PNG、JPEG 或 WebP，最大 1 MiB；前端與 Worker 都會驗證格式及大小。
+
 
 ## 練習紀錄與重設
 
@@ -176,7 +192,9 @@ Converter 會 fail closed 驗證：
 
 ## 問題回報
 
-若發現題目、答案、法源、畫面顯示問題或有功能建議，可至 [GitHub Issues](https://github.com/MuChengTechnology/rent-manager/issues/new) 建立回報。建議附上章節、題號、題庫版本與問題描述，請勿提供個人資料。
+若發現題目、答案、法源、畫面顯示問題或有功能建議，可使用網站內的浮出式問題回報表單；不熟悉 GitHub 的使用者不需要離開目前頁面。表單會顯示並預填練習分類、章節、目前第幾題與題庫版本，送出內容可包含一張已遮蔽個人資料的圖片。
+
+[GitHub Issues](https://github.com/MuChengTechnology/rent-manager/issues/new) 仍會永久保留，方便公開追蹤與開發協作。兩種管道都請勿提供密碼、證件、付款資料或其他敏感個資。
 
 ## 授權
 

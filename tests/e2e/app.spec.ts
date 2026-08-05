@@ -32,6 +32,48 @@ async function selectBankAtEntry(page: import('@playwright/test').Page, label = 
   await expect(page.locator('[data-question-key]')).toBeVisible()
 }
 
+test('問題回報使用同頁浮出表單，送出失敗時只提示未送出且不暴露設定細節', async ({ page, context }) => {
+  await page.goto(aboutPath)
+  const pagesBefore = context.pages().length
+  await page.getByRole('button', { name: '開啟問題回報表單' }).click()
+
+  const dialog = page.getByRole('dialog', { name: '問題回報' })
+  await expect(dialog).toBeVisible()
+  await expect(page).toHaveURL(aboutPath)
+  expect(context.pages()).toHaveLength(pagesBefore)
+  await expect(dialog.getByLabel('問題類型')).toBeVisible()
+  await expect(dialog.getByLabel('題庫類型')).toBeVisible()
+  await expect(dialog.getByLabel('題庫類型')).toHaveValue('')
+  await expect(dialog.getByLabel('題庫版本')).toBeVisible()
+  await expect(dialog.getByLabel('題目出現於')).toBeVisible()
+  await expect(dialog.getByLabel('題目出現於').getByRole('option')).toHaveCount(5)
+  await expect(dialog.getByLabel('章節（選填）')).toBeVisible()
+  await expect(dialog.getByLabel('章節（選填）').getByRole('option')).toHaveCount(11)
+  await expect(dialog.getByLabel('第幾題（選填）')).toBeVisible()
+  await expect(dialog.locator('[name="questionId"]')).toBeHidden()
+  await expect(dialog.getByLabel('您的稱呼')).toBeVisible()
+  await expect(dialog.getByLabel('您的 Email')).toBeVisible()
+  await expect(dialog.getByLabel('問題描述')).toBeVisible()
+  await expect(dialog.getByLabel('附圖（選填）')).toHaveAttribute('accept', 'image/png,image/jpeg,image/webp')
+  await expect(dialog.getByText('最大 1 MiB')).toBeVisible()
+  const submit = dialog.getByRole('button', { name: '送出回報' })
+  await expect(submit).toBeEnabled()
+  await expect(dialog.getByText(/site key/i)).toHaveCount(0)
+  await dialog.getByLabel('問題類型').selectOption('other')
+  await dialog.getByLabel('題庫類型').selectOption('init')
+  await dialog.getByLabel('您的稱呼').fill('測試使用者')
+  await dialog.getByLabel('您的 Email').fill('test@example.com')
+  await dialog.getByLabel('問題描述').fill('這是一段足夠長的測試問題描述。')
+  await dialog.getByLabel(/我確認回報內容/).check()
+  await submit.click()
+  await expect(dialog.getByRole('alert')).toContainText('回報未送出')
+  await expect(dialog.getByRole('alert')).not.toContainText(/site key|Turnstile/i)
+  await expect(dialog.getByRole('link', { name: 'GitHub Issues' })).toHaveAttribute('href', 'https://github.com/MuChengTechnology/rent-manager/issues/new')
+  await dialog.getByRole('button', { name: '取消' }).click()
+  await expect(dialog).toBeHidden()
+  await expect(page.getByRole('button', { name: '開啟問題回報表單' })).toBeFocused()
+});
+
 test('入口選擇題庫後進入全題練習，Header 可返回入口重新選擇', async ({ page }) => {
   await page.goto(homePath)
   await expect(page.getByRole('heading', { name: '選擇題庫版本' })).toBeVisible()

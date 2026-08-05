@@ -162,6 +162,29 @@ dl { display: grid; grid-template-columns: 1fr auto; gap: .6rem; } dt, dd { marg
 .report-card { border-left: 5px solid var(--track-accent); }
 .report-actions { display: flex; flex-wrap: wrap; gap: .75rem; margin-top: 1rem; }
 .report-actions .button { flex: 1 1 14rem; }
+.text-button { display: inline; padding: 0; color: var(--track-link); border: 0; background: transparent; font-weight: 700; text-decoration: underline; text-underline-offset: 3px; }
+.report-dialog { z-index: 100; width: min(760px, calc(100% - 1.25rem)); max-height: min(92dvh, 980px); padding: 0; overflow: auto; color: #243746; border: 1px solid #c9d7e1; border-radius: 18px; background: #fffdf8; box-shadow: 0 24px 70px #10283f59; }
+.report-dialog::backdrop { background: #10283f99; backdrop-filter: blur(2px); }
+.report-form { display: grid; gap: 1rem; padding: 1rem; }
+.report-dialog-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem; }
+.report-dialog-heading h2 { margin: .1rem 0 0; color: var(--track-deep); }
+.report-dialog-heading .eyebrow { margin: 0; }
+.report-dialog-close { display: grid; place-items: center; flex: 0 0 44px; min-height: 44px; padding: 0; color: var(--track-deep); border: 1px solid var(--track-accent); border-radius: 10px; background: var(--track-soft); font-size: 1.5rem; }
+.report-form-grid { display: grid; grid-template-columns: 1fr; gap: .85rem; }
+.report-form label { display: grid; gap: .4rem; color: var(--track-deep); font-weight: 700; }
+.report-form input:not([type='checkbox']), .report-form select, .report-form textarea { width: 100%; min-height: 46px; padding: .65rem .75rem; color: #243746; border: 1px solid #9eb0bd; border-radius: 9px; background: #fff; }
+.report-form input[type='file'] { min-height: 52px; padding: .5rem; }
+.report-form textarea { min-height: 8rem; resize: vertical; line-height: 1.55; }
+.report-form small { color: #5c6e7e; font-weight: 500; line-height: 1.45; }
+.report-checkbox { grid-template-columns: auto 1fr !important; align-items: start; color: #344d5d !important; font-weight: 500 !important; }
+.report-checkbox input { width: 20px; height: 20px; margin: .1rem 0 0; accent-color: var(--track-accent); }
+.report-form-actions { display: flex; flex-wrap: wrap; gap: .75rem; }
+.report-form-actions .button { flex: 1 1 12rem; }
+.report-form-status { margin: 0; padding: .8rem; color: #174b31; border-radius: 9px; background: #e7f6ec; font-weight: 700; }
+.report-form-status[role='alert'] { color: #8b2d2d; background: #fff1ef; }
+.report-alternative { margin: 0; color: #425568; font-size: .9rem; }
+.report-alternative a { color: var(--track-link); font-weight: 700; text-underline-offset: .16em; }
+.form-trap { position: fixed !important; left: -10000px !important; width: 1px !important; height: 1px !important; overflow: hidden !important; }
 
 .about-source-list { display: grid; grid-template-columns: 1fr; gap: .35rem; }
 .about-source-list dt { color: var(--track-deep); font-weight: 800; }
@@ -184,6 +207,7 @@ dl { display: grid; grid-template-columns: 1fr auto; gap: .6rem; } dt, dd { marg
   .settings-toggle:hover { color: #fff; background: var(--track-hover); }
   :is(.variant-choice-actions, .pager) .button:hover { color: var(--track-deep); border-color: var(--track-hover); background: var(--track-soft-hover); }
   .offline-toast-dismiss:hover { background: #d8f1e1; }
+  .report-dialog-close:hover { color: #fff; background: var(--track-hover); }
 }
 .settings-toggle:active { color: #fff; background: var(--track-strong); }
 :is(.variant-choice-actions, .pager) .button:active { color: #fff; border-color: var(--track-strong); background: var(--track-strong); box-shadow: inset 0 2px 4px #00000038; transform: translateY(1px); transition-duration: 0s; }
@@ -205,6 +229,9 @@ dl { display: grid; grid-template-columns: 1fr auto; gap: .6rem; } dt, dd { marg
   .primary-nav a, .primary-nav button { flex: 0 0 auto; }
   .about-source-list { grid-template-columns: minmax(5rem, auto) 1fr; gap: .6rem 1rem; }
   .about-source-list dt:not(:first-of-type) { margin-top: 0; }
+  .report-form { padding: 1.4rem; }
+  .report-form-grid { grid-template-columns: 1fr 1fr; }
+  .report-form-wide { grid-column: 1 / -1; }
 
   .app-shell { grid-template-columns: 260px minmax(0, 1fr); padding-top: 2rem; }
   .control-panel { position: sticky; top: 8rem; height: fit-content; }

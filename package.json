@@ -5,7 +5,9 @@
   "type": "module",
   "scripts": {
     "dev": "astro dev",
-    "test": "vitest run",
+    "test": "npm run test:unit && npm run test:worker",
+    "test:unit": "vitest run",
+    "test:worker": "node --test tests/worker.test.mjs",
     "test:watch": "vitest",
     "typecheck": "astro check",
     "build": "npm run typecheck && astro build && npm run build:sw",
