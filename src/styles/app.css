@@ -150,6 +150,9 @@ dl { display: grid; grid-template-columns: 1fr auto; gap: .6rem; } dt, dd { marg
 .question-bank-source .question-bank-disclaimer { margin-top: .8rem; padding-top: .8rem; border-top: 1px solid #d8e2ea; }
 .question-bank-about { display: inline-block; margin-top: .65rem; color: var(--track-link); font-weight: 800; text-underline-offset: .16em; }
 .single-column { width: min(720px, 100%); margin: 0 auto; padding: clamp(1rem, 4vw, 2rem); }
+.site-footer { width: min(720px, 100%); margin: 0 auto; padding: .25rem 1rem 2rem; color: var(--track-muted); text-align: center; }
+.site-footer p { margin: 0; font-size: .84rem; }
+.site-footer a { color: var(--track-link); font-weight: 800; text-underline-offset: .16em; }
 .about-page { display: grid; gap: 1rem; }
 .about-page h1, .about-page h2 { color: var(--track-deep); }
 .about-page h1 { margin: .2rem 0 .7rem; }

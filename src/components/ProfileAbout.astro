@@ -2,6 +2,7 @@
 import '../styles/app.css'
 import OfflineNotice from './OfflineNotice.astro'
 import ReportDialog from './ReportDialog.astro'
+import SiteFooter from './SiteFooter.astro'
 import { examProfiles } from '../lib/exam-profiles'
 import { renderSharedHeader } from '../lib/navigation'
 const canonical = new URL('/about/', Astro.site)
@@ -45,7 +46,7 @@ const canonical = new URL('/about/', Astro.site)
 
       <section class="card">
         <h2>服務與授權</h2>
-        <p>本工具由沐承科技有限公司提供，為公開免費的個人學習服務。原創程式碼採 <a href="https://github.com/MuChengTechnology/rent-manager/blob/main/LICENSE">MIT License</a> 授權；官方題庫與第三方內容的權利歸屬不因本專案授權而改變。</p>
+        <p>本工具由<a href="https://muchengtech.com">沐承科技有限公司</a>提供，為公開免費的個人學習服務。原創程式碼採 <a href="https://github.com/MuChengTechnology/rent-manager/blob/main/LICENSE">MIT License</a> 授權；官方題庫與第三方內容的權利歸屬不因本專案授權而改變。</p>
       </section>
 
       <section class="card report-card">
@@ -62,6 +63,7 @@ const canonical = new URL('/about/', Astro.site)
         <p>本網站僅供個人學習與測驗練習，不代表主管機關或考試主辦單位，亦不得作為法律意見或專業服務之替代。</p>
       </section>
     </main>
+    <SiteFooter />
     <ReportDialog />
     <OfflineNotice />
     <script>
