@@ -278,7 +278,7 @@ test('桌面導覽在各題庫頁保持可讀且不溢位', async ({ page }, tes
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true)
 })
 
-test('首頁與所有題庫導覽只使用共用 About，舊網址相容導向共用頁', async ({ page }) => {
+test('首頁與所有題庫導覽只使用共用 About', async ({ page }) => {
   await page.goto('/')
   await expect(page.locator('link[rel="canonical"]')).toHaveAttribute('href', `${canonicalOrigin}/`)
   await expect(page.getByRole('link', { name: '查看資料來源、使用說明與免責聲明' })).toHaveAttribute('href', '/about/')
@@ -287,9 +287,4 @@ test('首頁與所有題庫導覽只使用共用 About，舊網址相容導向�
   await expect(page.locator('link[rel="canonical"]')).toHaveAttribute('href', `${canonicalOrigin}/about/`)
   await expect(page.getByRole('heading', { name: '關於本站', level: 1 })).toBeVisible()
   await expect(page.locator('.about-source-list dt')).toHaveText(['初訓題庫', '換證題庫'])
-
-  for (const legacy of ['/init/about/', '/renew/about/']) {
-    await page.goto(legacy)
-    await expect(page).toHaveURL('/about/')
-  }
 })

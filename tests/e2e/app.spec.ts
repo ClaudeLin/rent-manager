@@ -575,7 +575,7 @@ test('根目錄可選擇初訓或換證 profile，並保留 PWA metadata', async
   await expect(page.getByRole('heading', { name: '選擇練習題庫' })).toBeVisible()
   await expect(page.getByRole('link', { name: '初訓題庫' })).toHaveAttribute('href', homePath)
   await expect(page.getByRole('link', { name: '換證題庫' })).toHaveAttribute('href', renewPath)
-  for (const [path, manifest] of [[rootPath, '/manifest.webmanifest'], [homePath, '/manifest-init.webmanifest'], [renewPath, '/manifest-renew.webmanifest'], [aboutPath, '/manifest.webmanifest'], ['/renew/about/', '/manifest.webmanifest']] as const) {
+  for (const [path, manifest] of [[rootPath, '/manifest.webmanifest'], [homePath, '/manifest-init.webmanifest'], [renewPath, '/manifest-renew.webmanifest'], [aboutPath, '/manifest.webmanifest']] as const) {
     await page.goto(path)
     await expect(page.locator('link[rel="icon"]')).toHaveAttribute('href', '/favicon.svg')
     await expect(page.locator('link[rel="manifest"]')).toHaveAttribute('href', manifest)
@@ -669,9 +669,16 @@ test('換證載入與註記失敗均 fail closed 並可返回換證入口', asyn
   await expect(page.locator('[data-question-key]')).toHaveCount(0)
 })
 
-test('換證舊 About URL 導向共用頁並說明 379 題、雙軌隔離與不提供模擬考', async ({ page }) => {
-  await page.goto('/renew/about/')
-  await expect(page).toHaveURL(aboutPath)
+test('只生成共用 About route，且同頁說明換證題數、雙軌隔離與不提供模擬考', async ({ page, request }) => {
+  for (const legacyPath of ['/init/about/', '/renew/about/']) {
+    expect(existsSync(resolve(process.cwd(), `dist${legacyPath}index.html`))).toBe(false)
+    const response = await request.get(legacyPath, { maxRedirects: 0 })
+    expect(response.status() < 300 || response.status() > 399).toBe(true)
+    expect(response.headers().location).toBeUndefined()
+    expect(await response.text()).not.toContain('class="about-page"')
+  }
+
+  await page.goto(aboutPath)
   await expect(page.getByRole('heading', { name: '關於本站' })).toBeVisible()
   await expect(page.getByText(/官方更新版日期：2026-02-06，共 379 題/)).toBeVisible()
   await expect(page.getByText(/兩種題庫的選擇、進度與學習紀錄彼此分開/)).toBeVisible()
