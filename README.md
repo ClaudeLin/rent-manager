@@ -78,12 +78,20 @@ npm run preview
 | 名稱 | 設定位置 | 用途 |
 |---|---|---|
 | `PUBLIC_TURNSTILE_SITE_KEY` | 前端 build-time public variable | Turnstile 公開 Site Key |
-| `FORM_ALLOWED_ORIGIN` | Worker runtime variable | 唯一允許提交表單的完整 origin，例如 `https://example.com` |
+| `FORM_ALLOWED_ORIGIN` | Worker runtime variable | 允許提交表單的精確 origin allowlist；多個值以逗號分隔 |
 | `FORM_SENDER` | Worker runtime variable | Email Routing 已允許的系統寄件者 |
 | `TURNSTILE_SECRET_KEY` | Worker secret | 僅供 Worker 驗證 Turnstile，不可暴露到前端 |
 | `REPORT_MAIL` | Worker runtime variable | 接收問題回報的信箱 |
 
 Cloudflare Email Routing 的 Send Email binding 名稱固定為 `REPORT_EMAIL`；這是 Worker binding，不是第六個文字設定值。`wrangler.jsonc` 也已版本化 `REPORT_RATE_LIMIT` binding（每個來源 IP 每 60 秒最多 3 次，專案 namespace `1001`），同樣不需要另填文字值；若同一 Cloudflare 帳號已使用該 namespace ID，部署前改成另一個帳號內唯一的正整數即可。正式收寄件值不應寫入 `wrangler.jsonc`、原始碼或 commit。缺少任一必要設定或 binding 時，API 會回傳 `service_unavailable` 並維持 fail closed；前端只會告知回報未送出並保留填寫內容，不會顯示 Site Key、binding 或其他部署細節。
+
+若 `rent-cert.muchengtech.com` 只會重新導向正式站，設定 `FORM_ALLOWED_ORIGIN=https://cert.muchengtech.com` 即可。若兩個網域都會直接載入網站並提交表單，設定：
+
+```text
+FORM_ALLOWED_ORIGIN=https://cert.muchengtech.com,https://rent-cert.muchengtech.com
+```
+
+每一項都必須是完整且精確的 `http`／`https` origin，不接受 path、空項目、重複項目或 `*.muchengtech.com` 萬用字元。Worker 也會要求 Turnstile 回傳的 hostname 與該次 request origin 對應。
 
 表單使用同頁 `<dialog>`，會預填目前的初訓／換證、題庫版本、練習分類（全題隨機、章節、模擬考或錯題）、章節、目前顯示第幾題與頁面，但使用者仍可修改。內部題目識別碼只會隱藏附帶，不會顯示為一般使用者欄位。附圖限一張 PNG、JPEG 或 WebP，最大 1 MiB；前端與 Worker 都會驗證格式及大小。
 
