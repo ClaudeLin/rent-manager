@@ -33,7 +33,6 @@ const turnstileFor = (action = 'issue-report', hostname = 'example.invalid') => 
 );
 const environment = (overrides = {}) => ({
   ASSETS: { fetch: async () => new Response('asset') },
-  REPORT_RATE_LIMIT: { limit: async () => ({ success: true }) },
   REPORT_EMAIL: { send: async () => undefined },
   REPORT_MAIL: 'reports@example.invalid',
   FORM_SENDER: 'sender@example.invalid',
@@ -47,11 +46,7 @@ test('Wrangler 只版本化 Worker 入口與 API routing，不內建部署端表
   assert.equal(config.main, './src/worker.mjs');
   assert.equal(config.assets.binding, 'ASSETS');
   assert.deepEqual(config.assets.run_worker_first, ['/api/*']);
-  assert.deepEqual(config.ratelimits, [{
-    name: 'REPORT_RATE_LIMIT',
-    namespace_id: '1001',
-    simple: { limit: 3, period: 60 },
-  }]);
+  assert.equal(config.ratelimits, undefined);
   assert.equal(config.vars, undefined);
   assert.equal(config.send_email, undefined);
 });
@@ -173,40 +168,16 @@ test('無效 Email 與欄位在驗證前拒絕且零寄件', async () => {
   }
 });
 
-test('honeypot 命中時假成功但不消耗 rate limit、不驗證 Turnstile、不寄信', async () => {
-  let limits = 0;
+test('honeypot 命中時假成功但不驗證 Turnstile、不寄信', async () => {
   let fetches = 0;
   let sends = 0;
   const response = await handleRequest(
     requestFor({ ...validBody, company: 'spam company' }),
-    environment({
-      REPORT_RATE_LIMIT: { limit: async () => { limits += 1; return { success: true }; } },
-      REPORT_EMAIL: { send: async () => { sends += 1; } },
-    }),
+    environment({ REPORT_EMAIL: { send: async () => { sends += 1; } } }),
     { fetch: async () => { fetches += 1; return turnstileFor()(); } },
   );
   assert.equal(response.status, 202);
   assert.deepEqual(await response.json(), { ok: true });
-  assert.equal(limits, 0);
-  assert.equal(fetches, 0);
-  assert.equal(sends, 0);
-});
-
-test('超過每 IP 配額時回傳 rate_limited，且不驗證 Turnstile、不寄信', async () => {
-  let fetches = 0;
-  let sends = 0;
-  let receivedKey = '';
-  const response = await handleRequest(
-    requestFor(),
-    environment({
-      REPORT_RATE_LIMIT: { limit: async ({ key }) => { receivedKey = key; return { success: false }; } },
-      REPORT_EMAIL: { send: async () => { sends += 1; } },
-    }),
-    { fetch: async () => { fetches += 1; return turnstileFor()(); } },
-  );
-  assert.equal(response.status, 429);
-  assert.deepEqual(await response.json(), { ok: false, error: 'rate_limited' });
-  assert.equal(receivedKey, 'issue-report:203.0.113.10');
   assert.equal(fetches, 0);
   assert.equal(sends, 0);
 });
@@ -256,7 +227,7 @@ test('跨來源、錯誤 content type 與超大 payload 在 Worker 邊界拒絕'
 });
 
 test('缺少任一必要設定時 fail closed，且不驗證 Turnstile、不寄信', async () => {
-  for (const key of ['REPORT_EMAIL', 'REPORT_RATE_LIMIT', 'REPORT_MAIL', 'FORM_SENDER', 'FORM_ALLOWED_ORIGIN', 'TURNSTILE_SECRET_KEY']) {
+  for (const key of ['REPORT_EMAIL', 'REPORT_MAIL', 'FORM_SENDER', 'FORM_ALLOWED_ORIGIN', 'TURNSTILE_SECRET_KEY']) {
     let fetches = 0;
     let sends = 0;
     const unavailable = await handleRequest(requestFor(), environment({

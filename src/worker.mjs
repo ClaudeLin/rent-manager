@@ -87,8 +87,8 @@ function readReportConfig(env) {
   const sender = clean(env.FORM_SENDER);
   const allowedOrigins = parseAllowedOrigins(env.FORM_ALLOWED_ORIGIN);
   const turnstileSecret = clean(env.TURNSTILE_SECRET_KEY);
-  if (!env.REPORT_EMAIL?.send || !env.REPORT_RATE_LIMIT?.limit || !recipient || !sender || !validEmail(recipient) || !validEmail(sender) || !allowedOrigins || !turnstileSecret) return null;
-  return { recipient, sender, allowedOrigins, turnstileSecret, rateLimiter: env.REPORT_RATE_LIMIT };
+  if (!env.REPORT_EMAIL?.send || !recipient || !sender || !validEmail(recipient) || !validEmail(sender) || !allowedOrigins || !turnstileSecret) return null;
+  return { recipient, sender, allowedOrigins, turnstileSecret };
 }
 
 function parseReport(body) {
@@ -185,14 +185,6 @@ export async function handleRequest(request, env, services = { fetch }) {
   }
   if (!body || typeof body !== 'object' || Array.isArray(body)) return json({ ok: false, error: 'invalid_fields' }, 422);
   if (clean(body.company)) return json({ ok: true }, 202);
-
-  try {
-    const clientKey = request.headers.get('cf-connecting-ip') || 'unknown';
-    const rate = await config.rateLimiter.limit({ key: `issue-report:${clientKey}` });
-    if (!rate?.success) return json({ ok: false, error: 'rate_limited' }, 429);
-  } catch {
-    return json({ ok: false, error: 'service_unavailable' }, 503);
-  }
 
   const parsed = parseReport(body);
   if (parsed?.invalidEmail) return json({ ok: false, error: 'invalid_email' }, 422);

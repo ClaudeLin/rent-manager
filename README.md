@@ -83,7 +83,7 @@ npm run preview
 | `TURNSTILE_SECRET_KEY` | Worker secret | 僅供 Worker 驗證 Turnstile，不可暴露到前端 |
 | `REPORT_MAIL` | Worker runtime variable | 接收問題回報的信箱 |
 
-Cloudflare Email Routing 的 Send Email binding 名稱固定為 `REPORT_EMAIL`；這是 Worker binding，不是第六個文字設定值。`wrangler.jsonc` 也已版本化 `REPORT_RATE_LIMIT` binding（每個來源 IP 每 60 秒最多 3 次，專案 namespace `1001`），同樣不需要另填文字值；若同一 Cloudflare 帳號已使用該 namespace ID，部署前改成另一個帳號內唯一的正整數即可。正式收寄件值不應寫入 `wrangler.jsonc`、原始碼或 commit。缺少任一必要設定或 binding 時，API 會回傳 `service_unavailable` 並維持 fail closed；前端只會告知回報未送出並保留填寫內容，不會顯示 Site Key、binding 或其他部署細節。
+Cloudflare Email Routing 的 Send Email binding 名稱固定為 `REPORT_EMAIL`；這是 Worker binding，不是第六個文字設定值。正式收寄件值不應寫入 `wrangler.jsonc`、原始碼或 commit。缺少任一必要設定或 Email binding 時，API 會回傳 `service_unavailable` 並維持 fail closed；前端只會告知回報未送出並保留填寫內容，不會顯示 Site Key、binding 或其他部署細節。此版本不使用額外的 Rate Limit binding。
 
 若 `rent-cert.muchengtech.com` 只會重新導向正式站，設定 `FORM_ALLOWED_ORIGIN=https://cert.muchengtech.com` 即可。若兩個網域都會直接載入網站並提交表單，設定：
 
