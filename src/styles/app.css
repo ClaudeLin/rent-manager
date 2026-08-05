@@ -163,8 +163,9 @@ dl { display: grid; grid-template-columns: 1fr auto; gap: .6rem; } dt, dd { marg
 .report-actions { display: flex; flex-wrap: wrap; gap: .75rem; margin-top: 1rem; }
 .report-actions .button { flex: 1 1 14rem; }
 
-.about-source-list { display: grid; grid-template-columns: minmax(5rem, auto) 1fr; gap: .6rem 1rem; }
+.about-source-list { display: grid; grid-template-columns: 1fr; gap: .35rem; }
 .about-source-list dt { color: var(--track-deep); font-weight: 800; }
+.about-source-list dt:not(:first-of-type) { margin-top: .75rem; }
 .about-source-list dd { margin: 0; }
 .disclaimer-card { border-left: 5px solid #f4b942; background: #fffbef; }
 .secondary-button, .about-page .secondary-button { color: var(--track-deep); border: 1px solid var(--track-accent); background: var(--track-soft); }
@@ -202,6 +203,8 @@ dl { display: grid; grid-template-columns: 1fr auto; gap: .6rem; } dt, dd { marg
   .mobile-menu-toggle { display: none; }
   .primary-nav, .primary-nav.is-open { display: flex; flex-wrap: wrap; }
   .primary-nav a, .primary-nav button { flex: 0 0 auto; }
+  .about-source-list { grid-template-columns: minmax(5rem, auto) 1fr; gap: .6rem 1rem; }
+  .about-source-list dt:not(:first-of-type) { margin-top: 0; }
 
   .app-shell { grid-template-columns: 260px minmax(0, 1fr); padding-top: 2rem; }
   .control-panel { position: sticky; top: 8rem; height: fit-content; }

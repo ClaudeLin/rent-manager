@@ -35,6 +35,19 @@ describe('track profile 與儲存空間隔離', () => {
     }
   })
 
+  it('初訓與換證都明確區分官方更新日期與本站最後更新／轉檔日期', () => {
+    expect(examProfiles.init.source).toEqual({
+      title: '租賃住宅管理人員資格訓練題庫',
+      officialUpdatedAt: '2026-02-06',
+      siteUpdatedAt: '2026-07-21',
+    })
+    expect(examProfiles.renew.source).toEqual({
+      title: '租賃住宅管理人員換證訓練題庫',
+      officialUpdatedAt: '2026-02-06',
+      siteUpdatedAt: '2026-08-03',
+    })
+  })
+
   it('兩個 track 可同時保存 session/history，renew 不會讀取 init legacy key', () => {
     storage.clear()
     writeStoredSession(session, examProfiles.init.storage.session)

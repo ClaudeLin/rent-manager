@@ -124,6 +124,8 @@ test('初訓全站使用藍色主題，換證全站使用綠色主題', async ({
   await page.goto('/about/')
   await expect(page.locator('body')).not.toHaveAttribute('data-track')
   await expect(page.locator('.about-page h1')).toHaveText('關於本站')
+  const sourceColumns = await page.locator('.about-source-list').evaluate(element => getComputedStyle(element).gridTemplateColumns.split(' ').length)
+  expect(sourceColumns).toBe(page.viewportSize()!.width < 760 ? 1 : 2)
   await expect(page.locator('.about-source-list dt')).toHaveCount(2)
   await expect(page.locator('link[rel="canonical"]')).toHaveAttribute('href', `${canonicalOrigin}/about/`)
 })

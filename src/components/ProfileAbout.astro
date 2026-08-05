@@ -31,9 +31,9 @@ const canonical = new URL('/about/', Astro.site)
         <p>題目來源為中華民國租賃住宅服務商業同業公會全國聯合會公布的<a href="https://rentalh.org.tw/down-list2.php?lmenuid=12&amp;mpmid=2">租賃住宅管理人員測驗題庫</a>；本站內容仍應以官方最新公告為準。</p>
         <dl class="about-source-list">
           <dt>初訓題庫</dt>
-          <dd>{examProfiles.init.source.title}，本站資料版本日期：<time datetime={examProfiles.init.source.updatedAt}>{examProfiles.init.source.updatedAt}</time>。</dd>
+          <dd>{examProfiles.init.source.title}；官方更新日期：<time datetime={examProfiles.init.source.officialUpdatedAt}>{examProfiles.init.source.officialUpdatedAt}</time>；本站最後更新／轉檔日期：<time datetime={examProfiles.init.source.siteUpdatedAt}>{examProfiles.init.source.siteUpdatedAt}</time>。</dd>
           <dt>換證題庫</dt>
-          <dd>{examProfiles.renew.source.title}，官方更新版日期：<time datetime={examProfiles.renew.source.updatedAt}>{examProfiles.renew.source.updatedAt}</time>，共 379 題。</dd>
+          <dd>{examProfiles.renew.source.title}；官方更新日期：<time datetime={examProfiles.renew.source.officialUpdatedAt}>{examProfiles.renew.source.officialUpdatedAt}</time>；本站最後更新／轉檔日期：<time datetime={examProfiles.renew.source.siteUpdatedAt}>{examProfiles.renew.source.siteUpdatedAt}</time>；共 379 題。</dd>
         </dl>
       </section>
 
