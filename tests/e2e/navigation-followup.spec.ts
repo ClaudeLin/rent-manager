@@ -10,6 +10,7 @@ async function selectBank(page: import('@playwright/test').Page, home: string): 
 }
 
 async function assertHeaderActions(page: import('@playwright/test').Page, routes: typeof init | typeof renew): Promise<void> {
+  await expect(page.locator('body')).toHaveAttribute('data-track', routes.home === renew.home ? 'renew' : 'init')
   const nav = page.getByRole('navigation', { name: '主要導覽', includeHidden: true })
   if ((page.viewportSize()?.width ?? 0) < 760) {
     const menu = page.locator('[data-mobile-menu-toggle]')
@@ -66,6 +67,105 @@ test('手機題庫選項維持各自淺色，只有按下期間變深且不殘�
 
   await assertStateSequence('初訓題庫')
   await assertStateSequence('換證題庫')
+})
+
+test('初訓全站使用藍色主題，換證全站使用綠色主題', async ({ page }) => {
+  const themes = [
+    {
+      routes: init,
+      track: 'init',
+      themeColor: '#143b63',
+      deep: 'rgb(20, 59, 99)',
+      accent: 'rgb(23, 105, 170)',
+      soft: 'rgb(232, 242, 249)',
+      pale: 'rgb(237, 246, 252)',
+      link: 'rgb(16, 95, 154)',
+    },
+    {
+      routes: renew,
+      track: 'renew',
+      themeColor: '#174b42',
+      deep: 'rgb(23, 75, 66)',
+      accent: 'rgb(40, 114, 100)',
+      soft: 'rgb(229, 243, 240)',
+      pale: 'rgb(237, 248, 245)',
+      link: 'rgb(23, 105, 92)',
+    },
+  ] as const
+
+  for (const theme of themes) {
+    await page.goto(theme.routes.home)
+    await page.mouse.move(0, 0)
+    await expect(page.locator('body')).toHaveAttribute('data-track', theme.track)
+    await expect(page.locator('meta[name="theme-color"]')).toHaveAttribute('content', theme.themeColor)
+    await expect(page.locator('.question-bank-choice h1')).toHaveCSS('color', theme.deep)
+    const bankButtons = page.locator('.variant-choice-actions .button')
+    await expect(bankButtons).toHaveCount(2)
+    for (const bankButton of await bankButtons.all()) {
+      await expect(bankButton).toHaveCSS('background-color', theme.soft)
+      await expect(bankButton).toHaveCSS('color', theme.deep)
+      await expect(bankButton).toHaveCSS('border-color', theme.accent)
+    }
+
+    await bankButtons.first().click()
+    await expect(page.locator('[data-question-key]')).toBeVisible()
+    await expect(page.locator('body')).toHaveAttribute('data-track', theme.track)
+    await expect(page.locator('.brand')).toHaveCSS('background-color', theme.deep)
+    await expect(page.locator('[data-action="check-practice"]')).toHaveCSS('background-color', theme.accent)
+    await page.locator('[data-option="A"]').click()
+    await expect(page.locator('[data-option="A"]')).toHaveCSS('background-color', theme.pale)
+    await expect(page.locator('[data-option="A"]')).toHaveCSS('border-color', theme.accent)
+
+    await page.goto(theme.routes.about)
+    await expect(page.locator('body')).toHaveAttribute('data-track', theme.track)
+    await expect(page.locator('.brand')).toHaveCSS('background-color', theme.deep)
+    await expect(page.locator('.about-page h1')).toHaveCSS('color', theme.deep)
+    await expect(page.locator('.about-page a').first()).toHaveCSS('color', theme.link)
+  }
+})
+
+test('手機雙題庫版本按鈕維持同軌淺色，只有按下項目短暫變深', async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name !== 'mobile', '手機觸控色彩專屬驗證')
+  const cases = [
+    {
+      home: init.home,
+      light: { background: 'rgb(232, 242, 249)', color: 'rgb(20, 59, 99)', border: 'rgb(23, 105, 170)' },
+      dark: { background: 'rgb(11, 65, 104)', color: 'rgb(255, 255, 255)', border: 'rgb(11, 65, 104)' },
+    },
+    {
+      home: renew.home,
+      light: { background: 'rgb(229, 243, 240)', color: 'rgb(23, 75, 66)', border: 'rgb(40, 114, 100)' },
+      dark: { background: 'rgb(22, 72, 63)', color: 'rgb(255, 255, 255)', border: 'rgb(22, 72, 63)' },
+    },
+  ] as const
+
+  for (const item of cases) {
+    await page.goto(item.home)
+    const devtools = await page.context().newCDPSession(page)
+    await devtools.send('DOM.enable')
+    await devtools.send('CSS.enable')
+    const { root } = await devtools.send('DOM.getDocument')
+    const { nodeId } = await devtools.send('DOM.querySelector', { nodeId: root.nodeId, selector: '[data-bank="withLaw"]' })
+    const readColors = (element: HTMLElement) => {
+      const style = getComputedStyle(element)
+      return { background: style.backgroundColor, color: style.color, border: style.borderColor }
+    }
+    const readPair = async () => ({
+      pressed: await page.locator('[data-bank="withLaw"]').evaluate(readColors),
+      other: await page.locator('[data-bank="withoutLaw"]').evaluate(readColors),
+    })
+    const force = async (forcedPseudoClasses: string[]) => {
+      await devtools.send('CSS.forcePseudoState', { nodeId, forcedPseudoClasses })
+      await page.waitForTimeout(170)
+      return readPair()
+    }
+
+    expect(await force([])).toEqual({ pressed: item.light, other: item.light })
+    expect(await force(['hover'])).toEqual({ pressed: item.light, other: item.light })
+    expect(await force(['hover', 'active'])).toEqual({ pressed: item.dark, other: item.light })
+    expect(await force(['hover'])).toEqual({ pressed: item.light, other: item.light })
+    expect(await force([])).toEqual({ pressed: item.light, other: item.light })
+  }
 })
 
 test('手機 About 共用可存取漢堡選單且無橫向溢位', async ({ page }, testInfo) => {
