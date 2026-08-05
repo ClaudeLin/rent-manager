@@ -11,7 +11,8 @@ export interface ExamProfile {
   annotationPath: string
   storage: { selectedBank: string; session: string; history: string }
   mockExam: { enabled: boolean; questionsPerChapter: number; minutes: number }
-  source: { title: string; updatedAt: string }
+  source: { title: string; officialUpdatedAt: string; siteUpdatedAt: string }
+  theme: { color: string; manifestPath: string }
 }
 
 const initProfile: ExamProfile = {
@@ -23,7 +24,8 @@ const initProfile: ExamProfile = {
   annotationPath: '/data/question_annotations.json',
   storage: { selectedBank: 'rent-exam-question-bank-v1', session: 'rent-exam-session-v1', history: 'rent-exam-history-v1' },
   mockExam: { enabled: true, questionsPerChapter: 10, minutes: 120 },
-  source: { title: '租賃住宅管理人員資格訓練題庫', updatedAt: '2026-07-21' },
+  source: { title: '租賃住宅管理人員資格訓練題庫', officialUpdatedAt: '2026-02-06', siteUpdatedAt: '2026-07-21' },
+  theme: { color: '#143b63', manifestPath: '/manifest-init.webmanifest' },
 }
 
 const renewProfile: ExamProfile = {
@@ -35,12 +37,13 @@ const renewProfile: ExamProfile = {
   annotationPath: '/data/renew/question_annotations.json',
   storage: { selectedBank: 'rent-exam-renew-question-bank-v1', session: 'rent-exam-renew-session-v1', history: 'rent-exam-renew-history-v1' },
   mockExam: { enabled: false, questionsPerChapter: 10, minutes: 120 },
-  source: { title: '租賃住宅管理人員換證訓練題庫', updatedAt: '2026-02-06' },
+  source: { title: '租賃住宅管理人員換證訓練題庫', officialUpdatedAt: '2026-02-06', siteUpdatedAt: '2026-08-03' },
+  theme: { color: '#174b42', manifestPath: '/manifest-renew.webmanifest' },
 }
 
 export const examProfiles: Record<TrackKey, ExamProfile> = { init: initProfile, renew: renewProfile }
 export const getExamProfile = (key: TrackKey): ExamProfile => examProfiles[key]
 export const routesForProfile = (profile: ExamProfile) => ({
   home: profile.basePath + '/', practice: profile.basePath + '/practice/', chapter: profile.basePath + '/practice/chapter/',
-  mock: profile.basePath + '/mock/', wrong: profile.basePath + '/wrong/', about: profile.basePath + '/about/',
+  mock: profile.basePath + '/mock/', wrong: profile.basePath + '/wrong/', about: '/about/',
 })

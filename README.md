@@ -37,9 +37,9 @@ npm run dev
 | `/init/practice/chapter`、`/renew/practice/chapter` | 選擇實際存在的章節後隨機或依題號順序練習 |
 | `/init/mock` | 初訓 120 分鐘、十章各隨機抽十題模擬考與歷史章節正確率 |
 | `/init/wrong`、`/renew/wrong` | 作答統計、實際章節的歷史答錯率與指定章節錯題練習 |
-| `/init/about`、`/renew/about` | 各題庫資料來源、功能說明與免責聲明 |
+| `/about/` | 唯一 canonical 的「關於本站」頁面，集中說明兩種題庫的資料來源、功能說明與免責聲明 |
 
-換證題庫目前有 379 題、實際為第 1 至第 3 章；換證模擬考刻意延後，網站不提供連結且不會產生 `/renew/mock/`。舊版 `/practice`、`/practice/chapter`、`/mock`、`/wrong` 與 `/about` 仍保留相容 redirect 到對應的 `/init` 路由。
+換證題庫目前有 379 題、實際為第 1 至第 3 章；換證模擬考刻意延後，網站不提供連結且不會產生 `/renew/mock/`。舊版 `/practice`、`/practice/chapter`、`/mock` 與 `/wrong` 仍保留相容 redirect 到對應的 `/init` 路由。About 只由 `/about/` 提供，不建立訓練類型專屬路徑。
 
 題庫選擇保存在目前瀏覽器的 `localStorage`，關閉並重新開啟網站或已安裝的 Web App 後，仍會使用先前選擇的題庫。可隨時由頁首的「更換題庫」返回入口重選。
 
@@ -64,7 +64,9 @@ npm run preview
 
 ## 靜態部署
 
-本專案固定使用網站根目錄路由，不需要設定部署網址、Base path 或環境變數。靜態託管平台可使用：
+本專案固定使用網站根目錄路由。正式 production canonical 為 `https://cert.muchengtech.com`；`rent-cert.muchengtech.com` 是為未來其他證照服務預留的 alias，頁面 canonical 仍應指向正式網址。
+
+靜態託管平台可使用：
 
 - **Build command**：`npm run build`
 - **Build output directory**：`dist`
@@ -82,8 +84,8 @@ npm run preview
 
 - [租賃住宅管理人員測驗題庫｜中華民國租賃住宅服務商業同業公會全國聯合會](https://rentalh.org.tw/down-list2.php?lmenuid=12&mpmid=2)
 - 來源頁提供「租賃住宅管理人員資格訓練題庫(全科目不含法源依據)115.02.06更新版」與「租賃住宅管理人員資格訓練題庫(全科目含法源依據)115.02.06更新版」兩份檔案。
-- 本專案目前題庫最後更新／轉檔日期：**2026/7/21**。
-- 換證題庫來源為官方「115.02.06 更新版」（2026-02-06），Runtime 兩個版本各 **379 題**；內容請以官方最新公告為準。
+- 初訓題庫：官方更新日期 **2026-02-06**；本站最後更新／轉檔日期 **2026-07-21**；Runtime 兩個版本各 **966 題**。
+- 換證題庫：官方更新日期 **2026-02-06**；本站最後更新／轉檔日期 **2026-08-03**；Runtime 兩個版本各 **379 題**。
 - 網站 `/about` 集中說明資料來源、模擬考規則與免責聲明；題庫僅供個人學習及測驗練習使用，內容仍應以官方最新公告為準。
 
 使用者確認的 corrected 原始來源位於 `source-data/`，不可由轉換程式直接覆寫：
@@ -174,7 +176,7 @@ Converter 會 fail closed 驗證：
 
 ## 問題回報
 
-若發現題目、答案、法源、畫面顯示問題或有功能建議，可至 [GitHub Issues](https://github.com/MuChengTechnology/rent-manager/issues/new) 建立回報；沒有 GitHub 帳號時，也可使用網站「關於本站」頁面的「Email 回報」按鈕。建議附上章節、題號、題庫版本與問題描述，請勿提供個人資料。
+若發現題目、答案、法源、畫面顯示問題或有功能建議，可至 [GitHub Issues](https://github.com/MuChengTechnology/rent-manager/issues/new) 建立回報。建議附上章節、題號、題庫版本與問題描述，請勿提供個人資料。
 
 ## 授權
 
