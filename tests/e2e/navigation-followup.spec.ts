@@ -130,6 +130,23 @@ test('初訓全站使用藍色主題，換證全站使用綠色主題', async ({
   await expect(page.locator('link[rel="canonical"]')).toHaveAttribute('href', `${canonicalOrigin}/about/`)
 })
 
+test('About 公司名稱連回官網，頁尾清楚標示服務提供者', async ({ page }) => {
+  await page.goto('/about/')
+
+  const serviceProviderLink = page.locator('.about-page').getByRole('link', { name: '沐承科技有限公司' })
+  await expect(serviceProviderLink).toHaveAttribute('href', 'https://muchengtech.com')
+
+  const footer = page.getByRole('contentinfo')
+  await expect(footer).toContainText('本學習工具由')
+  await expect(footer.getByRole('link', { name: '沐承科技有限公司' })).toHaveAttribute('href', 'https://muchengtech.com')
+  await expect(footer).toContainText('提供')
+
+  for (const route of ['/', '/init/', '/renew/', '/init/practice/', '/renew/practice/']) {
+    await page.goto(route)
+    await expect(page.getByRole('contentinfo').getByRole('link', { name: '沐承科技有限公司' })).toHaveAttribute('href', 'https://muchengtech.com')
+  }
+})
+
 test('手機雙題庫版本按鈕維持同軌淺色，只有按下項目短暫變深', async ({ page }, testInfo) => {
   test.skip(testInfo.project.name !== 'mobile', '手機觸控色彩專屬驗證')
   const cases = [
