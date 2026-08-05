@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test'
-import { existsSync } from 'node:fs'
+import { existsSync, readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 
 const rootPath = '/'
@@ -415,7 +415,14 @@ test('網站固定由根目錄提供入口與靜態資源', async ({ page, reque
   expect(resourcePaths.every((path) => path.startsWith('/'))).toBe(true)
 })
 
-test('Service Worker precache 包含共用題目註記', async ({ request }) => {
+test('完整 build 產出的 Service Worker precache 包含共用題目註記與兩種 PWA manifest', async ({ request }) => {
+  const serviceWorkerPath = resolve(process.cwd(), 'dist/sw.js')
+  expect(existsSync(serviceWorkerPath)).toBe(true)
+  const serviceWorker = readFileSync(serviceWorkerPath, 'utf8')
+  expect(serviceWorker).toContain('question_annotations.json')
+  expect(serviceWorker).toContain('manifest-init.webmanifest')
+  expect(serviceWorker).toContain('manifest-renew.webmanifest')
+
   const response = await request.get('/sw.js')
   expect(response.ok()).toBe(true)
   expect(await response.text()).toContain('question_annotations.json')

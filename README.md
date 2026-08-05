@@ -37,9 +37,10 @@ npm run dev
 | `/init/practice/chapter`、`/renew/practice/chapter` | 選擇實際存在的章節後隨機或依題號順序練習 |
 | `/init/mock` | 初訓 120 分鐘、十章各隨機抽十題模擬考與歷史章節正確率 |
 | `/init/wrong`、`/renew/wrong` | 作答統計、實際章節的歷史答錯率與指定章節錯題練習 |
-| `/init/about`、`/renew/about` | 各題庫資料來源、功能說明與免責聲明 |
+| `/about/` | 唯一 canonical 的「關於本站」頁面，集中說明兩種題庫的資料來源、功能說明與免責聲明 |
+| `/init/about/`、`/renew/about/` | 舊網址相容 redirect 至 `/about/` |
 
-換證題庫目前有 379 題、實際為第 1 至第 3 章；換證模擬考刻意延後，網站不提供連結且不會產生 `/renew/mock/`。舊版 `/practice`、`/practice/chapter`、`/mock`、`/wrong` 與 `/about` 仍保留相容 redirect 到對應的 `/init` 路由。
+換證題庫目前有 379 題、實際為第 1 至第 3 章；換證模擬考刻意延後，網站不提供連結且不會產生 `/renew/mock/`。舊版 `/practice`、`/practice/chapter`、`/mock` 與 `/wrong` 仍保留相容 redirect 到對應的 `/init` 路由；`/init/about/` 與 `/renew/about/` 則僅相容 redirect 至唯一的 `/about/`，不使用 hostname redirect。
 
 題庫選擇保存在目前瀏覽器的 `localStorage`，關閉並重新開啟網站或已安裝的 Web App 後，仍會使用先前選擇的題庫。可隨時由頁首的「更換題庫」返回入口重選。
 
@@ -64,7 +65,7 @@ npm run preview
 
 ## 靜態部署
 
-本專案固定使用網站根目錄路由。正式 production canonical 為 `https://cert.muchengtech.com`；`cert-rent.muchengtech.com` 是預留綁定的別名，頁面 canonical 仍應指向正式網址。舊 `cert.muchengi.com` 暫時保留，待 Cloudflare 端另行拔除，應用程式目前不主動轉址。
+本專案固定使用網站根目錄路由。正式 production canonical 為 `https://cert.muchengtech.com`；`cert-rent.muchengtech.com` 是預留綁定的 alias，頁面 canonical 仍應指向正式網址。舊 `cert.muchengi.com` 暫時保留，待 Cloudflare 端另行拔除；應用程式目前不進行 hostname redirect。
 
 靜態託管平台可使用：
 
