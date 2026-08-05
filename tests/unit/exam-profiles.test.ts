@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
 import { examProfiles, routesForProfile } from '../../src/lib/exam-profiles'
 import { clearHistory, emptyHistory, readHistory, writeHistory } from '../../src/lib/history'
@@ -17,8 +18,21 @@ describe('track profile 與儲存空間隔離', () => {
     expect(examProfiles.init.storage).toEqual({ selectedBank: 'rent-exam-question-bank-v1', session: 'rent-exam-session-v1', history: 'rent-exam-history-v1' })
     expect(examProfiles.renew.storage).toEqual({ selectedBank: 'rent-exam-renew-question-bank-v1', session: 'rent-exam-renew-session-v1', history: 'rent-exam-renew-history-v1' })
     expect(routesForProfile(examProfiles.init).practice).toBe('/init/practice/')
+    expect(routesForProfile(examProfiles.init).about).toBe('/about/')
     expect(routesForProfile(examProfiles.renew).wrong).toBe('/renew/wrong/')
+    expect(routesForProfile(examProfiles.renew).about).toBe('/about/')
     expect(examProfiles.renew.mockExam.enabled).toBe(false)
+  })
+
+  it('初訓與換證使用各自的 theme color 與可安裝 manifest', () => {
+    expect(examProfiles.init.theme).toEqual({ color: '#143b63', manifestPath: '/manifest-init.webmanifest' })
+    expect(examProfiles.renew.theme).toEqual({ color: '#174b42', manifestPath: '/manifest-renew.webmanifest' })
+    for (const profile of [examProfiles.init, examProfiles.renew]) {
+      const manifest = JSON.parse(readFileSync(`public${profile.theme.manifestPath}`, 'utf8'))
+      expect(manifest.theme_color).toBe(profile.theme.color)
+      expect(manifest.start_url).toBe(`${profile.basePath}/`)
+      expect(manifest.id).toBe(`${profile.basePath}/`)
+    }
   })
 
   it('兩個 track 可同時保存 session/history，renew 不會讀取 init legacy key', () => {

@@ -64,7 +64,9 @@ npm run preview
 
 ## 靜態部署
 
-本專案固定使用網站根目錄路由，不需要設定部署網址、Base path 或環境變數。靜態託管平台可使用：
+本專案固定使用網站根目錄路由。正式 production canonical 為 `https://cert.muchengtech.com`；`cert-rent.muchengtech.com` 是預留綁定的別名，頁面 canonical 仍應指向正式網址。舊 `cert.muchengi.com` 暫時保留，待 Cloudflare 端另行拔除，應用程式目前不主動轉址。
+
+靜態託管平台可使用：
 
 - **Build command**：`npm run build`
 - **Build output directory**：`dist`
