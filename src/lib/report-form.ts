@@ -8,7 +8,6 @@ export function reportErrorMessage(code: string): string {
     case 'invalid_email': return 'Email 格式不正確，回報未送出。請確認後再試，填寫內容已保留。'
     case 'invalid_attachment': return '附圖需為 PNG、JPEG 或 WebP，且不可超過 1 MiB；回報未送出，填寫內容已保留。'
     case 'invalid_fields': return '部分欄位內容不正確，回報未送出。請檢查後再試，填寫內容已保留。'
-    case 'rate_limited': return '短時間內送出次數過多，回報未送出。請稍後再試，填寫內容已保留。'
     default: return FALLBACK_ERROR
   }
 }

@@ -65,19 +65,30 @@ function parseAttachment(value) {
   }
 }
 
-function readReportConfig(env) {
-  const recipient = clean(env.REPORT_MAIL);
-  const sender = clean(env.FORM_SENDER);
-  const allowedOriginValue = clean(env.FORM_ALLOWED_ORIGIN);
-  const turnstileSecret = clean(env.TURNSTILE_SECRET_KEY);
-  if (!env.REPORT_EMAIL?.send || !env.REPORT_RATE_LIMIT?.limit || !recipient || !sender || !validEmail(recipient) || !validEmail(sender) || !allowedOriginValue || !turnstileSecret) return null;
+function parseAllowedOrigins(value) {
+  if (typeof value !== 'string' || /[\u0000-\u001f\u007f]/.test(value)) return null;
+  const entries = value.split(',').map((entry) => entry.trim());
+  if (!entries.length || entries.length > 10 || entries.some((entry) => !entry || entry.includes('*'))) return null;
+  const origins = new Set();
   try {
-    const url = new URL(allowedOriginValue);
-    if (!['https:', 'http:'].includes(url.protocol) || url.href !== `${url.origin}/`) return null;
-    return { recipient, sender, allowedOrigin: url.origin, turnstileSecret, rateLimiter: env.REPORT_RATE_LIMIT };
+    for (const entry of entries) {
+      const url = new URL(entry);
+      if (!['https:', 'http:'].includes(url.protocol) || url.username || url.password || entry !== url.origin) return null;
+      origins.add(url.origin);
+    }
   } catch {
     return null;
   }
+  return origins.size === entries.length ? origins : null;
+}
+
+function readReportConfig(env) {
+  const recipient = clean(env.REPORT_MAIL);
+  const sender = clean(env.FORM_SENDER);
+  const allowedOrigins = parseAllowedOrigins(env.FORM_ALLOWED_ORIGIN);
+  const turnstileSecret = clean(env.TURNSTILE_SECRET_KEY);
+  if (!env.REPORT_EMAIL?.send || !recipient || !sender || !validEmail(recipient) || !validEmail(sender) || !allowedOrigins || !turnstileSecret) return null;
+  return { recipient, sender, allowedOrigins, turnstileSecret };
 }
 
 function parseReport(body) {
@@ -157,7 +168,8 @@ export async function handleRequest(request, env, services = { fetch }) {
 
   const config = readReportConfig(env);
   if (!config) return json({ ok: false, error: 'service_unavailable' }, 503);
-  if (request.headers.get('Origin') !== config.allowedOrigin) return json({ ok: false, error: 'forbidden' }, 403);
+  const requestOrigin = request.headers.get('Origin');
+  if (!config.allowedOrigins.has(requestOrigin)) return json({ ok: false, error: 'forbidden' }, 403);
   if (!request.headers.get('content-type')?.toLowerCase().startsWith('application/json')) {
     return json({ ok: false, error: 'invalid_content_type' }, 415);
   }
@@ -174,19 +186,11 @@ export async function handleRequest(request, env, services = { fetch }) {
   if (!body || typeof body !== 'object' || Array.isArray(body)) return json({ ok: false, error: 'invalid_fields' }, 422);
   if (clean(body.company)) return json({ ok: true }, 202);
 
-  try {
-    const clientKey = request.headers.get('cf-connecting-ip') || 'unknown';
-    const rate = await config.rateLimiter.limit({ key: `issue-report:${clientKey}` });
-    if (!rate?.success) return json({ ok: false, error: 'rate_limited' }, 429);
-  } catch {
-    return json({ ok: false, error: 'service_unavailable' }, 503);
-  }
-
   const parsed = parseReport(body);
   if (parsed?.invalidEmail) return json({ ok: false, error: 'invalid_email' }, 422);
   if (parsed?.invalidAttachment) return json({ ok: false, error: 'invalid_attachment' }, 422);
   if (!parsed) return json({ ok: false, error: 'invalid_fields' }, 422);
-  if (!await verifyTurnstile(clean(body.turnstileToken), request, config.turnstileSecret, new URL(config.allowedOrigin).hostname, services.fetch)) {
+  if (!await verifyTurnstile(clean(body.turnstileToken), request, config.turnstileSecret, new URL(requestOrigin).hostname, services.fetch)) {
     return json({ ok: false, error: 'verification_failed' }, 422);
   }
 

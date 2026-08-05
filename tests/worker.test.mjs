@@ -22,7 +22,7 @@ const validBody = {
   company: '',
   turnstileToken: 'valid-token',
 };
-const requestFor = (body = validBody, requestOrigin = origin) => new Request(`${origin}/api/forms/issue-report`, {
+const requestFor = (body = validBody, requestOrigin = origin) => new Request(`${requestOrigin}/api/forms/issue-report`, {
   method: 'POST',
   headers: { 'content-type': 'application/json', origin: requestOrigin, 'cf-connecting-ip': '203.0.113.10' },
   body: JSON.stringify(body),
@@ -33,7 +33,6 @@ const turnstileFor = (action = 'issue-report', hostname = 'example.invalid') => 
 );
 const environment = (overrides = {}) => ({
   ASSETS: { fetch: async () => new Response('asset') },
-  REPORT_RATE_LIMIT: { limit: async () => ({ success: true }) },
   REPORT_EMAIL: { send: async () => undefined },
   REPORT_MAIL: 'reports@example.invalid',
   FORM_SENDER: 'sender@example.invalid',
@@ -47,11 +46,7 @@ test('Wrangler 只版本化 Worker 入口與 API routing，不內建部署端表
   assert.equal(config.main, './src/worker.mjs');
   assert.equal(config.assets.binding, 'ASSETS');
   assert.deepEqual(config.assets.run_worker_first, ['/api/*']);
-  assert.deepEqual(config.ratelimits, [{
-    name: 'REPORT_RATE_LIMIT',
-    namespace_id: '1001',
-    simple: { limit: 3, period: 60 },
-  }]);
+  assert.equal(config.ratelimits, undefined);
   assert.equal(config.vars, undefined);
   assert.equal(config.send_email, undefined);
 });
@@ -76,6 +71,33 @@ test('合法回報從 REPORT_MAIL 與 FORM_SENDER 讀取收寄件者，回報者
   assert.match(sent[0].text, /系統題目識別碼：c2-s1-q17/);
   assert.match(sent[0].text, /回報人：王小明/);
   assert.doesNotMatch(sent[0].text, /turnstileToken/);
+});
+
+test('FORM_ALLOWED_ORIGIN 以逗號分隔兩個精確 origin，兩者各自驗證對應 Turnstile hostname', async () => {
+  const origins = ['https://cert.muchengtech.com', 'https://rent-cert.muchengtech.com'];
+  for (const requestOrigin of origins) {
+    const sent = [];
+    const response = await handleRequest(
+      requestFor(validBody, requestOrigin),
+      environment({
+        FORM_ALLOWED_ORIGIN: origins.join(','),
+        REPORT_EMAIL: { send: async (message) => sent.push(message) },
+      }),
+      { fetch: turnstileFor('issue-report', new URL(requestOrigin).hostname) },
+    );
+    assert.equal(response.status, 200, requestOrigin);
+    assert.equal(sent.length, 1, requestOrigin);
+  }
+});
+
+test('origin allowlist 接受最多 10 個精確 origin', async () => {
+  const origins = Array.from({ length: 10 }, (_, index) => `https://site-${index}.example.invalid`);
+  const response = await handleRequest(
+    requestFor(validBody, origins[9]),
+    environment({ FORM_ALLOWED_ORIGIN: origins.join(',') }),
+    { fetch: turnstileFor('issue-report', 'site-9.example.invalid') },
+  );
+  assert.equal(response.status, 200);
 });
 
 test('回報者 Email 只用於 Reply-To，前端偽造收寄件者會被忽略', async () => {
@@ -146,40 +168,16 @@ test('無效 Email 與欄位在驗證前拒絕且零寄件', async () => {
   }
 });
 
-test('honeypot 命中時假成功但不消耗 rate limit、不驗證 Turnstile、不寄信', async () => {
-  let limits = 0;
+test('honeypot 命中時假成功但不驗證 Turnstile、不寄信', async () => {
   let fetches = 0;
   let sends = 0;
   const response = await handleRequest(
     requestFor({ ...validBody, company: 'spam company' }),
-    environment({
-      REPORT_RATE_LIMIT: { limit: async () => { limits += 1; return { success: true }; } },
-      REPORT_EMAIL: { send: async () => { sends += 1; } },
-    }),
+    environment({ REPORT_EMAIL: { send: async () => { sends += 1; } } }),
     { fetch: async () => { fetches += 1; return turnstileFor()(); } },
   );
   assert.equal(response.status, 202);
   assert.deepEqual(await response.json(), { ok: true });
-  assert.equal(limits, 0);
-  assert.equal(fetches, 0);
-  assert.equal(sends, 0);
-});
-
-test('超過每 IP 配額時回傳 rate_limited，且不驗證 Turnstile、不寄信', async () => {
-  let fetches = 0;
-  let sends = 0;
-  let receivedKey = '';
-  const response = await handleRequest(
-    requestFor(),
-    environment({
-      REPORT_RATE_LIMIT: { limit: async ({ key }) => { receivedKey = key; return { success: false }; } },
-      REPORT_EMAIL: { send: async () => { sends += 1; } },
-    }),
-    { fetch: async () => { fetches += 1; return turnstileFor()(); } },
-  );
-  assert.equal(response.status, 429);
-  assert.deepEqual(await response.json(), { ok: false, error: 'rate_limited' });
-  assert.equal(receivedKey, 'issue-report:203.0.113.10');
   assert.equal(fetches, 0);
   assert.equal(sends, 0);
 });
@@ -202,6 +200,21 @@ test('Turnstile 必須符合 issue-report action 與設定來源 hostname', asyn
   }
 });
 
+test('即使 hostname 在 allowlist 中，也不能拿另一個 origin 的 Turnstile 結果送出', async () => {
+  let sends = 0;
+  const response = await handleRequest(
+    requestFor(),
+    environment({
+      FORM_ALLOWED_ORIGIN: `${origin},https://rent-cert.muchengtech.com`,
+      REPORT_EMAIL: { send: async () => { sends += 1; } },
+    }),
+    { fetch: turnstileFor('issue-report', 'rent-cert.muchengtech.com') },
+  );
+  assert.equal(response.status, 422);
+  assert.deepEqual(await response.json(), { ok: false, error: 'verification_failed' });
+  assert.equal(sends, 0);
+});
+
 test('跨來源、錯誤 content type 與超大 payload 在 Worker 邊界拒絕', async () => {
   const forbidden = await handleRequest(requestFor(validBody, 'https://evil.invalid'), environment(), { fetch: turnstileFor() });
   assert.equal(forbidden.status, 403);
@@ -214,7 +227,7 @@ test('跨來源、錯誤 content type 與超大 payload 在 Worker 邊界拒絕'
 });
 
 test('缺少任一必要設定時 fail closed，且不驗證 Turnstile、不寄信', async () => {
-  for (const key of ['REPORT_EMAIL', 'REPORT_RATE_LIMIT', 'REPORT_MAIL', 'FORM_SENDER', 'FORM_ALLOWED_ORIGIN', 'TURNSTILE_SECRET_KEY']) {
+  for (const key of ['REPORT_EMAIL', 'REPORT_MAIL', 'FORM_SENDER', 'FORM_ALLOWED_ORIGIN', 'TURNSTILE_SECRET_KEY']) {
     let fetches = 0;
     let sends = 0;
     const unavailable = await handleRequest(requestFor(), environment({
@@ -234,6 +247,16 @@ test('設定中的 sender、report mail 或 origin 格式不合法時 fail close
     { FORM_SENDER: 'bad@email' },
     { FORM_ALLOWED_ORIGIN: 'not-a-url' },
     { FORM_ALLOWED_ORIGIN: 'https://example.invalid/path' },
+    { FORM_ALLOWED_ORIGIN: 'https://example.invalid/' },
+    { FORM_ALLOWED_ORIGIN: 'https://example.invalid\u0000' },
+    { FORM_ALLOWED_ORIGIN: 'https://example.invalid,' },
+    { FORM_ALLOWED_ORIGIN: 'https://*.muchengtech.com' },
+    { FORM_ALLOWED_ORIGIN: 'https://example.invalid,https://example.invalid' },
+    { FORM_ALLOWED_ORIGIN: 'https://user:password@example.invalid' },
+    { FORM_ALLOWED_ORIGIN: 'https://example.invalid?source=form' },
+    { FORM_ALLOWED_ORIGIN: 'https://example.invalid#form' },
+    { FORM_ALLOWED_ORIGIN: 'ftp://example.invalid' },
+    { FORM_ALLOWED_ORIGIN: Array.from({ length: 11 }, (_, index) => `https://site-${index}.example.invalid`).join(',') },
   ]) {
     const response = await handleRequest(requestFor(), environment(overrides), { fetch: turnstileFor() });
     assert.equal(response.status, 503);
