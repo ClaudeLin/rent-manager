@@ -1,6 +1,7 @@
 ---
 import '../styles/app.css'
 import OfflineNotice from './OfflineNotice.astro'
+import ReportDialog from './ReportDialog.astro'
 import { examProfiles } from '../lib/exam-profiles'
 import { renderSharedHeader } from '../lib/navigation'
 const canonical = new URL('/about/', Astro.site)
@@ -49,9 +50,10 @@ const canonical = new URL('/about/', Astro.site)
 
       <section class="card report-card">
         <h2>問題回報</h2>
-        <p>若發現題目、答案、解析、網站操作或顯示問題，目前可透過 GitHub Issues 回報。站內寄信表單將另案推出。</p>
+        <p>若發現題目、答案、解析、網站操作或顯示問題，可使用站內表單回報；目前頁面與題目資訊會自動附上。若表單服務尚未完成設定，也可改用 GitHub Issues。</p>
         <div class="report-actions">
-          <a class="button" href="https://github.com/MuChengTechnology/rent-manager/issues/new">使用 GitHub Issues</a>
+          <button type="button" class="button" data-report-open>開啟問題回報表單</button>
+          <a class="button secondary-button" href="https://github.com/MuChengTechnology/rent-manager/issues/new">使用 GitHub Issues</a>
         </div>
       </section>
 
@@ -60,6 +62,7 @@ const canonical = new URL('/about/', Astro.site)
         <p>本網站僅供個人學習與測驗練習，不代表主管機關或考試主辦單位，亦不得作為法律意見或專業服務之替代。</p>
       </section>
     </main>
+    <ReportDialog />
     <OfflineNotice />
     <script>
       import { initMobileMenu } from '../lib/navigation'
