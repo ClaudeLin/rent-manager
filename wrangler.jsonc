@@ -10,6 +10,19 @@
     "run_worker_first": ["/api/*"]
   },
 
+  "vars": {
+    "FORM_ALLOWED_ORIGIN": "https://cert.muchengtech.com,https://rent-cert.muchengtech.com",
+    "FORM_SENDER": "certissuereport@muchengtech.com",
+    "REPORT_MAIL": "certissuereport@muchengtech.com"
+  },
+
+  "send_email": [
+    {
+      "name": "REPORT_EMAIL",
+      "destination_address": "certissuereport@muchengtech.com"
+    }
+  ],
+
   "observability": {
     "enabled": true
   }
