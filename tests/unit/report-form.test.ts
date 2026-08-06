@@ -102,19 +102,19 @@ describe('問題回報表單', () => {
     vi.spyOn(FileReader.prototype, 'readAsDataURL').mockImplementation(function (this: FileReader, blob: Blob) {
       setTimeout(() => originalReadAsDataUrl.call(this, blob), 30)
     })
-    const { opener, form } = setup()
+    const { opener, form, status } = setup()
     const fileInput = form.elements.namedItem('attachment') as HTMLInputElement
     const file = new File([new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a])], 'screen.png', { type: 'image/png' })
     Object.defineProperty(fileInput, 'files', { configurable: true, value: [file] })
-    const fetchMock = vi.fn(async (_url: string, init: RequestInit) => {
-      const body = JSON.parse(String(init.body))
-      expect(body.attachment).toEqual({ type: 'image/png', content: 'iVBORw0KGgo=' })
-      return new Response(JSON.stringify({ ok: true }), { status: 200, headers: { 'content-type': 'application/json' } })
-    })
+    const fetchMock = vi.fn(async (_url: string, _init: RequestInit) => new Response(JSON.stringify({ ok: true }), { status: 200, headers: { 'content-type': 'application/json' } }))
     vi.stubGlobal('fetch', fetchMock)
     opener.click()
     form.dispatchEvent(new SubmitEvent('submit', { bubbles: true, cancelable: true }))
     await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledOnce())
+    const request = fetchMock.mock.calls[0]![1] as RequestInit
+    const body = JSON.parse(String(request.body))
+    expect(body.attachment).toEqual({ type: 'image/png', content: 'iVBORw0KGgo=' })
+    await vi.waitFor(() => expect(status.textContent).toContain('回報已成功寄出'))
     vi.unstubAllGlobals()
   })
 
