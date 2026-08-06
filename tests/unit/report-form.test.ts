@@ -97,6 +97,36 @@ describe('問題回報表單', () => {
     vi.unstubAllGlobals()
   })
 
+  it('送出期間顯示處理中狀態、禁止重複提交，完成後恢復按鈕', async () => {
+    const { opener, form, status } = setup()
+    const submit = form.querySelector<HTMLButtonElement>('button[type="submit"]')!
+    let resolveResponse!: (response: Response) => void
+    const response = new Promise<Response>((resolve) => { resolveResponse = resolve })
+    const fetchMock = vi.fn(() => response)
+    vi.stubGlobal('fetch', fetchMock)
+
+    opener.click()
+    form.dispatchEvent(new SubmitEvent('submit', { bubbles: true, cancelable: true }))
+
+    await vi.waitFor(() => expect(submit.disabled).toBe(true))
+    expect(submit.textContent).toBe('送出中…')
+    expect(submit.getAttribute('aria-busy')).toBe('true')
+    expect(form.getAttribute('aria-busy')).toBe('true')
+    expect(status.textContent).toContain('正在送出')
+    expect(status.hidden).toBe(false)
+
+    form.dispatchEvent(new SubmitEvent('submit', { bubbles: true, cancelable: true }))
+    await flush()
+    expect(fetchMock).toHaveBeenCalledOnce()
+
+    resolveResponse(new Response(JSON.stringify({ ok: true }), { status: 200, headers: { 'content-type': 'application/json' } }))
+    await vi.waitFor(() => expect(status.textContent).toContain('回報已成功寄出'))
+    expect(submit.disabled).toBe(false)
+    expect(submit.textContent).toBe('送出')
+    expect(submit.hasAttribute('aria-busy')).toBe(false)
+    expect(form.hasAttribute('aria-busy')).toBe(false)
+  })
+
   it('將單張 PNG 轉成無 data URL 前綴的 base64 附件欄位', async () => {
     const originalReadAsDataUrl = FileReader.prototype.readAsDataURL
     vi.spyOn(FileReader.prototype, 'readAsDataURL').mockImplementation(function (this: FileReader, blob: Blob) {
