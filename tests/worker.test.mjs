@@ -41,14 +41,12 @@ const environment = (overrides = {}) => ({
   ...overrides,
 });
 
-test('Wrangler 只版本化 Worker 入口與 API routing，不內建部署端表單值', async () => {
+test('Wrangler 版本化 Worker 入口與 API routing，且不重新加入 Rate Limit binding', async () => {
   const config = JSON.parse(await readFile(new URL('../wrangler.jsonc', import.meta.url), 'utf8'));
   assert.equal(config.main, './src/worker.mjs');
   assert.equal(config.assets.binding, 'ASSETS');
   assert.deepEqual(config.assets.run_worker_first, ['/api/*']);
   assert.equal(config.ratelimits, undefined);
-  assert.equal(config.vars, undefined);
-  assert.equal(config.send_email, undefined);
 });
 
 test('合法回報從 REPORT_MAIL 與 FORM_SENDER 讀取收寄件者，回報者 Email 只作 Reply-To', async () => {

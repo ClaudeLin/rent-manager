@@ -7,7 +7,7 @@
     "dev": "astro dev",
     "test": "npm run test:unit && npm run test:worker",
     "test:unit": "vitest run",
-    "test:worker": "node --test tests/worker.test.mjs",
+    "test:worker": "node --test tests/worker.test.mjs tests/config.test.mjs",
     "test:watch": "vitest",
     "typecheck": "astro check",
     "build": "npm run typecheck && astro build && npm run build:sw",

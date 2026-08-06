@@ -73,17 +73,20 @@ npm run preview
 
 ### 站內問題回報設定
 
-站內表單與 GitHub Issues 會同時保留；前者方便非開發背景的使用者，後者仍是公開追蹤與開發協作管道。部署端需要提供五個值：
+站內表單與 GitHub Issues 會同時保留；前者方便非開發背景的使用者，後者仍是公開追蹤與開發協作管道。部署設定分成三類：
 
 | 名稱 | 設定位置 | 用途 |
 |---|---|---|
-| `PUBLIC_TURNSTILE_SITE_KEY` | 前端 build-time public variable | Turnstile 公開 Site Key |
-| `FORM_ALLOWED_ORIGIN` | Worker runtime variable | 允許提交表單的精確 origin allowlist；多個值以逗號分隔 |
-| `FORM_SENDER` | Worker runtime variable | Email Routing 已允許的系統寄件者 |
-| `TURNSTILE_SECRET_KEY` | Worker secret | 僅供 Worker 驗證 Turnstile，不可暴露到前端 |
-| `REPORT_MAIL` | Worker runtime variable | 接收問題回報的信箱 |
+| `PUBLIC_TURNSTILE_SITE_KEY` | Cloudflare build-time public variable | Turnstile 公開 Site Key；Astro build 時必須存在 |
+| `FORM_ALLOWED_ORIGIN` | `wrangler.jsonc` 的 `vars` | 允許提交表單的精確 origin allowlist；多個值以逗號分隔 |
+| `FORM_SENDER` | `wrangler.jsonc` 的 `vars` | Email Service 已允許的固定系統寄件者 |
+| `REPORT_MAIL` | `wrangler.jsonc` 的 `vars` | 接收問題回報的固定信箱 |
+| `TURNSTILE_SECRET_KEY` | Worker secret | 僅供 Worker 驗證 Turnstile，不可寫入原始碼或 `wrangler.jsonc` |
+| `REPORT_EMAIL` | `wrangler.jsonc` 的 `send_email` binding | 受固定收件者及寄件者 allowlist 限制的 Email Service binding |
 
-Cloudflare Email Routing 的 Send Email binding 名稱固定為 `REPORT_EMAIL`；這是 Worker binding，不是第六個文字設定值。正式收寄件值不應寫入 `wrangler.jsonc`、原始碼或 commit。缺少任一必要設定或 Email binding 時，API 會回傳 `service_unavailable` 並維持 fail closed；前端只會告知回報未送出並保留填寫內容，不會顯示 Site Key、binding 或其他部署細節。此版本不使用額外的 Rate Limit binding。
+`wrangler.jsonc` 是 runtime variables 與 Email binding 的版本化 source of truth。新 branch 內的 `replace-me.invalid` 是刻意不可用的 placeholder；合併或部署前必須填入正式 `FORM_ALLOWED_ORIGIN`、`FORM_SENDER` 與 `REPORT_MAIL`，並讓 `REPORT_EMAIL.destination_address`／`allowed_sender_addresses` 保持與兩個 Email variables 完全一致。`tests/config.test.mjs` 會驗證欄位與限制設定不再漂移。
+
+`TURNSTILE_SECRET_KEY` 仍須透過 Cloudflare secret 管理，不得 commit；`PUBLIC_TURNSTILE_SITE_KEY` 必須設在 Cloudflare build environment，因為 Wrangler runtime variable 不會回填已完成的 Astro browser bundle。缺少任一必要設定或 Email binding 時，API 會回傳 `service_unavailable` 並維持 fail closed；前端只會告知回報未送出並保留填寫內容，不會顯示 Site Key、binding 或其他部署細節。此版本不使用額外的 Rate Limit binding。
 
 若 `rent-cert.muchengtech.com` 只會重新導向正式站，設定 `FORM_ALLOWED_ORIGIN=https://cert.muchengtech.com` 即可。若兩個網域都會直接載入網站並提交表單，設定：
 

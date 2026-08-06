@@ -10,6 +10,20 @@
     "run_worker_first": ["/api/*"]
   },
 
+  "vars": {
+    "FORM_ALLOWED_ORIGIN": "https://replace-me.invalid",
+    "FORM_SENDER": "replace-sender@replace-me.invalid",
+    "REPORT_MAIL": "replace-recipient@replace-me.invalid"
+  },
+
+  "send_email": [
+    {
+      "name": "REPORT_EMAIL",
+      "destination_address": "replace-recipient@replace-me.invalid",
+      "allowed_sender_addresses": ["replace-sender@replace-me.invalid"]
+    }
+  ],
+
   "observability": {
     "enabled": true
   }
