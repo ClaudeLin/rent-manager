@@ -81,6 +81,8 @@ export function initReportForm(root: ParentNode = document): void {
   if (!dialog || !form || !status || dialog.dataset.reportBound) return
   dialog.dataset.reportBound = 'true'
   let opener: HTMLElement | null = null
+  let isSubmitting = false
+  const closeButtons = [...dialog.querySelectorAll<HTMLButtonElement>('[data-report-close]')]
 
   root.addEventListener('click', (event) => {
     const target = event.target as Element | null
@@ -93,12 +95,16 @@ export function initReportForm(root: ParentNode = document): void {
       form.querySelector<HTMLElement>('select, input, textarea')?.focus()
       return
     }
-    if (target?.closest('[data-report-close]')) dialog.close()
+    if (target?.closest('[data-report-close]') && !isSubmitting) dialog.close()
   })
 
   dialog.addEventListener('close', () => opener?.focus())
+  dialog.addEventListener('cancel', (event) => {
+    if (isSubmitting) event.preventDefault()
+  })
   form.addEventListener('submit', async (event) => {
     event.preventDefault()
+    if (isSubmitting) return
     if (!form.reportValidity()) return
     const submit = form.querySelector<HTMLButtonElement>('button[type="submit"]')
     const endpoint = form.dataset.endpoint
@@ -111,11 +117,29 @@ export function initReportForm(root: ParentNode = document): void {
       return
     }
 
+    const idleSubmitLabel = submit.textContent || '送出回報'
+    const finishSubmitting = (): void => {
+      isSubmitting = false
+      submit.disabled = false
+      submit.textContent = idleSubmitLabel
+      submit.removeAttribute('aria-busy')
+      form.removeAttribute('aria-busy')
+      closeButtons.forEach((button) => { button.disabled = false })
+    }
+    isSubmitting = true
+    submit.disabled = true
+    submit.textContent = '送出中…'
+    submit.setAttribute('aria-busy', 'true')
+    form.setAttribute('aria-busy', 'true')
+    closeButtons.forEach((button) => { button.disabled = true })
+    setStatus(status, '正在送出回報，請稍候。', false)
+
     let attachment: { type: string; content: string } | null
     try {
       attachment = await encodeAttachment(form.querySelector<HTMLInputElement>('[name="attachment"]')?.files?.[0])
     } catch {
       setStatus(status, reportErrorMessage('invalid_attachment'), true)
+      finishSubmitting()
       return
     }
 
@@ -128,9 +152,6 @@ export function initReportForm(root: ParentNode = document): void {
     if (body.includeDevice === 'on') body.deviceSummary = navigator.userAgent.slice(0, 300)
     delete body.includeDevice
 
-    submit.disabled = true
-    submit.setAttribute('aria-busy', 'true')
-    status.hidden = true
     let failure = FALLBACK_ERROR
     try {
       const response = await fetch(endpoint, {
@@ -156,8 +177,7 @@ export function initReportForm(root: ParentNode = document): void {
       const widget = form.querySelector<Element>('.cf-turnstile')
       const turnstile = (window as TurnstileWindow).turnstile
       if (widget && turnstile) turnstile.reset(widget)
-      submit.disabled = false
-      submit.removeAttribute('aria-busy')
+      finishSubmitting()
     }
   })
 }

@@ -173,6 +173,7 @@ dl { display: grid; grid-template-columns: 1fr auto; gap: .6rem; } dt, dd { marg
 .report-dialog-heading h2 { margin: .1rem 0 0; color: var(--track-deep); }
 .report-dialog-heading .eyebrow { margin: 0; }
 .report-dialog-close { display: grid; place-items: center; flex: 0 0 44px; min-height: 44px; padding: 0; color: var(--track-deep); border: 1px solid var(--track-accent); border-radius: 10px; background: var(--track-soft); font-size: 1.5rem; }
+.report-dialog-close:disabled { cursor: not-allowed; opacity: .45; }
 .report-form-grid { display: grid; grid-template-columns: 1fr; gap: .85rem; }
 .report-form label { display: grid; gap: .4rem; color: var(--track-deep); font-weight: 700; }
 .report-form input:not([type='checkbox']), .report-form select, .report-form textarea { width: 100%; min-height: 46px; padding: .65rem .75rem; color: #243746; border: 1px solid #9eb0bd; border-radius: 9px; background: #fff; }
@@ -183,11 +184,14 @@ dl { display: grid; grid-template-columns: 1fr auto; gap: .6rem; } dt, dd { marg
 .report-checkbox input { width: 20px; height: 20px; margin: .1rem 0 0; accent-color: var(--track-accent); }
 .report-form-actions { display: flex; flex-wrap: wrap; gap: .75rem; }
 .report-form-actions .button { flex: 1 1 12rem; }
+.report-form-actions .button[aria-busy='true'] { gap: .55rem; cursor: wait; opacity: .88; }
+.report-form-actions .button[aria-busy='true']::before { content: ''; width: 1rem; height: 1rem; flex: 0 0 1rem; border: 2px solid #ffffff66; border-top-color: #fff; border-radius: 50%; animation: report-submit-spin .75s linear infinite; }
 .report-form-status { margin: 0; padding: .8rem; color: #174b31; border-radius: 9px; background: #e7f6ec; font-weight: 700; }
 .report-form-status[role='alert'] { color: #8b2d2d; background: #fff1ef; }
 .report-alternative { margin: 0; color: #425568; font-size: .9rem; }
 .report-alternative a { color: var(--track-link); font-weight: 700; text-underline-offset: .16em; }
 .form-trap { position: fixed !important; left: -10000px !important; width: 1px !important; height: 1px !important; overflow: hidden !important; }
+@keyframes report-submit-spin { to { transform: rotate(360deg); } }
 
 .about-source-list { display: grid; grid-template-columns: 1fr; gap: .35rem; }
 .about-source-list dt { color: var(--track-deep); font-weight: 800; }
