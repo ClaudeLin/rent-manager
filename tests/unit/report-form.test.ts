@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import { initReportForm, reportErrorMessage } from '../../src/lib/report-form'
 
 function setup({ turnstileToken = 'test-token' }: { turnstileToken?: string } = {}) {
@@ -44,6 +44,13 @@ function setup({ turnstileToken = 'test-token' }: { turnstileToken?: string } = 
 const flush = () => new Promise((resolve) => setTimeout(resolve, 0))
 
 describe('問題回報表單', () => {
+  afterEach(() => {
+    vi.restoreAllMocks()
+    vi.unstubAllGlobals()
+    document.body.innerHTML = ''
+    delete document.body.dataset.track
+  })
+
   it('只將固定公開錯誤碼映射為文案，未知與 prototype 名稱使用 generic fallback', () => {
     expect(reportErrorMessage('invalid_email')).toContain('Email 格式不正確')
     expect(reportErrorMessage('verification_failed')).toContain('回報未送出')
@@ -91,6 +98,10 @@ describe('問題回報表單', () => {
   })
 
   it('將單張 PNG 轉成無 data URL 前綴的 base64 附件欄位', async () => {
+    const originalReadAsDataUrl = FileReader.prototype.readAsDataURL
+    vi.spyOn(FileReader.prototype, 'readAsDataURL').mockImplementation(function (this: FileReader, blob: Blob) {
+      setTimeout(() => originalReadAsDataUrl.call(this, blob), 30)
+    })
     const { opener, form } = setup()
     const fileInput = form.elements.namedItem('attachment') as HTMLInputElement
     const file = new File([new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a])], 'screen.png', { type: 'image/png' })
@@ -103,8 +114,7 @@ describe('問題回報表單', () => {
     vi.stubGlobal('fetch', fetchMock)
     opener.click()
     form.dispatchEvent(new SubmitEvent('submit', { bubbles: true, cancelable: true }))
-    await new Promise((resolve) => setTimeout(resolve, 10))
-    expect(fetchMock).toHaveBeenCalledOnce()
+    await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledOnce())
     vi.unstubAllGlobals()
   })
 
