@@ -8,6 +8,7 @@ function setup({ turnstileToken = 'test-token' }: { turnstileToken?: string } = 
     <button data-report-open data-report-bank-label="換證・有詳解題庫">問題回報</button>
     <section class="question-card" data-question-key="c2-s1-q17" data-question-number="23"></section></main>
     <dialog data-report-dialog>
+      <button type="button" data-report-close>關閉</button>
       <form data-report-form data-endpoint="/api/forms/issue-report">
         <select name="issueType"><option value="question">題目錯誤</option></select>
         <select name="track" data-report-track><option value="init">初訓</option><option value="renew">換證</option></select>
@@ -98,8 +99,9 @@ describe('問題回報表單', () => {
   })
 
   it('送出期間顯示處理中狀態、禁止重複提交，完成後恢復按鈕', async () => {
-    const { opener, form, status } = setup()
+    const { root, dialog, opener, form, status } = setup()
     const submit = form.querySelector<HTMLButtonElement>('button[type="submit"]')!
+    const closeButtons = [...root.querySelectorAll<HTMLButtonElement>('[data-report-close]')]
     let resolveResponse!: (response: Response) => void
     const response = new Promise<Response>((resolve) => { resolveResponse = resolve })
     const fetchMock = vi.fn(() => response)
@@ -114,6 +116,14 @@ describe('問題回報表單', () => {
     expect(form.getAttribute('aria-busy')).toBe('true')
     expect(status.textContent).toContain('正在送出')
     expect(status.hidden).toBe(false)
+    expect(closeButtons).toHaveLength(2)
+    expect(closeButtons.every((button) => button.disabled)).toBe(true)
+
+    const cancelEvent = new Event('cancel', { cancelable: true })
+    expect(dialog.dispatchEvent(cancelEvent)).toBe(false)
+    expect(cancelEvent.defaultPrevented).toBe(true)
+    closeButtons[0]!.click()
+    expect(dialog.close).not.toHaveBeenCalled()
 
     form.dispatchEvent(new SubmitEvent('submit', { bubbles: true, cancelable: true }))
     await flush()
@@ -125,6 +135,10 @@ describe('問題回報表單', () => {
     expect(submit.textContent).toBe('送出')
     expect(submit.hasAttribute('aria-busy')).toBe(false)
     expect(form.hasAttribute('aria-busy')).toBe(false)
+    expect(closeButtons.every((button) => !button.disabled)).toBe(true)
+    const restoredCancelEvent = new Event('cancel', { cancelable: true })
+    expect(dialog.dispatchEvent(restoredCancelEvent)).toBe(true)
+    expect(restoredCancelEvent.defaultPrevented).toBe(false)
   })
 
   it('將單張 PNG 轉成無 data URL 前綴的 base64 附件欄位', async () => {

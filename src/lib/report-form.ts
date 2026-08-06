@@ -82,6 +82,7 @@ export function initReportForm(root: ParentNode = document): void {
   dialog.dataset.reportBound = 'true'
   let opener: HTMLElement | null = null
   let isSubmitting = false
+  const closeButtons = [...dialog.querySelectorAll<HTMLButtonElement>('[data-report-close]')]
 
   root.addEventListener('click', (event) => {
     const target = event.target as Element | null
@@ -94,10 +95,13 @@ export function initReportForm(root: ParentNode = document): void {
       form.querySelector<HTMLElement>('select, input, textarea')?.focus()
       return
     }
-    if (target?.closest('[data-report-close]')) dialog.close()
+    if (target?.closest('[data-report-close]') && !isSubmitting) dialog.close()
   })
 
   dialog.addEventListener('close', () => opener?.focus())
+  dialog.addEventListener('cancel', (event) => {
+    if (isSubmitting) event.preventDefault()
+  })
   form.addEventListener('submit', async (event) => {
     event.preventDefault()
     if (isSubmitting) return
@@ -120,12 +124,14 @@ export function initReportForm(root: ParentNode = document): void {
       submit.textContent = idleSubmitLabel
       submit.removeAttribute('aria-busy')
       form.removeAttribute('aria-busy')
+      closeButtons.forEach((button) => { button.disabled = false })
     }
     isSubmitting = true
     submit.disabled = true
     submit.textContent = '送出中…'
     submit.setAttribute('aria-busy', 'true')
     form.setAttribute('aria-busy', 'true')
+    closeButtons.forEach((button) => { button.disabled = true })
     setStatus(status, '正在送出回報，請稍候。', false)
 
     let attachment: { type: string; content: string } | null
