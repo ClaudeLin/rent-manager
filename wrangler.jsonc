@@ -11,15 +11,15 @@
   },
 
   "vars": {
-    "FORM_ALLOWED_ORIGIN": "https://replace-me.invalid",
-    "FORM_SENDER": "replace-sender@replace-me.invalid",
-    "REPORT_MAIL": "replace-recipient@replace-me.invalid"
+    "FORM_ALLOWED_ORIGIN": "https://cert.muchengtech.com,https://rent-cert.muchengtech.com",
+    "FORM_SENDER": "certissuereport@muchengtech.com",
+    "REPORT_MAIL": "certissuereport@muchengtech.com"
   },
 
   "send_email": [
     {
       "name": "REPORT_EMAIL",
-      "destination_address": "replace-recipient@replace-me.invalid",
+      "destination_address": "certissuereport@muchengtech.com",
       "allowed_sender_addresses": ["replace-sender@replace-me.invalid"]
     }
   ],
