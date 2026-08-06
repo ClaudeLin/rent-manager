@@ -19,8 +19,7 @@
   "send_email": [
     {
       "name": "REPORT_EMAIL",
-      "destination_address": "certissuereport@muchengtech.com",
-      "allowed_sender_addresses": ["replace-sender@replace-me.invalid"]
+      "destination_address": "certissuereport@muchengtech.com"
     }
   ],
 

@@ -82,9 +82,9 @@ npm run preview
 | `FORM_SENDER` | `wrangler.jsonc` 的 `vars` | Email Service 已允許的固定系統寄件者 |
 | `REPORT_MAIL` | `wrangler.jsonc` 的 `vars` | 接收問題回報的固定信箱 |
 | `TURNSTILE_SECRET_KEY` | Worker secret | 僅供 Worker 驗證 Turnstile，不可寫入原始碼或 `wrangler.jsonc` |
-| `REPORT_EMAIL` | `wrangler.jsonc` 的 `send_email` binding | 受固定收件者及寄件者 allowlist 限制的 Email Service binding |
+| `REPORT_EMAIL` | `wrangler.jsonc` 的 `send_email` binding | 綁定固定收件者的 Email Service binding；名稱須與 Worker 的 `env.REPORT_EMAIL` 一致 |
 
-`wrangler.jsonc` 是 runtime variables 與 Email binding 的版本化 source of truth。新 branch 內的 `replace-me.invalid` 是刻意不可用的 placeholder；合併或部署前必須填入正式 `FORM_ALLOWED_ORIGIN`、`FORM_SENDER` 與 `REPORT_MAIL`，並讓 `REPORT_EMAIL.destination_address`／`allowed_sender_addresses` 保持與兩個 Email variables 完全一致。`tests/config.test.mjs` 會驗證欄位與限制設定不再漂移。
+`wrangler.jsonc` 是 runtime variables 與 Email binding 的版本化 source of truth。新 branch 內的 `replace-me.invalid` 是刻意不可用的 placeholder；合併或部署前必須填入正式 `FORM_ALLOWED_ORIGIN`、`FORM_SENDER` 與 `REPORT_MAIL`，並讓 `REPORT_EMAIL.destination_address` 與 `REPORT_MAIL` 完全一致。`tests/config.test.mjs` 會驗證欄位與限制設定不再漂移。
 
 `TURNSTILE_SECRET_KEY` 仍須透過 Cloudflare secret 管理，不得 commit；`PUBLIC_TURNSTILE_SITE_KEY` 必須設在 Cloudflare build environment，因為 Wrangler runtime variable 不會回填已完成的 Astro browser bundle。缺少任一必要設定或 Email binding 時，API 會回傳 `service_unavailable` 並維持 fail closed；前端只會告知回報未送出並保留填寫內容，不會顯示 Site Key、binding 或其他部署細節。此版本不使用額外的 Rate Limit binding。
 

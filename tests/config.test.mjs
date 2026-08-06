@@ -13,12 +13,11 @@ test('Wrangler 版本化問題回報 runtime variables 欄位', () => {
   for (const value of Object.values(config.vars)) assert.equal(typeof value === 'string' && value.length > 0, true);
 });
 
-test('Wrangler 版本化受限制的 REPORT_EMAIL binding', () => {
+test('Wrangler 版本化固定收件者的 REPORT_EMAIL binding', () => {
   assert.equal(config.send_email.length, 1);
   assert.deepEqual(config.send_email[0], {
     name: 'REPORT_EMAIL',
     destination_address: config.vars.REPORT_MAIL,
-    allowed_sender_addresses: [config.vars.FORM_SENDER],
   });
 });
 
