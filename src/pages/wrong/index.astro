@@ -1,3 +1,4 @@
 ---
-return Astro.redirect('/init/wrong/', 302)
+import LegacyRedirect from '../../components/LegacyRedirect.astro'
 ---
+<LegacyRedirect target="/init/wrong/" label="初訓錯題回顧" />

@@ -71,6 +71,18 @@ npm run preview
 - **Build command**：`npm run build`
 - **Build output directory**：`dist`
 
+### 搜尋引擎與爬蟲
+
+正式 crawler contract 由 `public/robots.txt` 與 `public/sitemap.xml` 版本化管理：
+
+- Sitemap 只列出 `/`、`/init/`、`/renew/`、`/about/` 四個可獨立理解的入口頁。
+- 練習、章節、模擬考與錯題頁會輸出 `noindex,follow`；爬蟲可讀取該指令，但不應將依賴本機狀態的頁面列入搜尋結果。
+- `/api/` 與 `/data/` 不屬於可索引頁面，`robots.txt` 會要求標準爬蟲不要抓取；靜態 `/data/*` 回應另加 `X-Robots-Tag`。
+- 舊版 `/practice*`、`/mock/`、`/wrong/` 由 Worker 永久 301 至對應的 `/init/.../` canonical；不存在路徑使用 branded `404.html` 並標示 `noindex,nofollow`。
+- Canonical、Open Graph、Twitter Card 與 sitemap URL 一律使用 `https://cert.muchengtech.com`，alias 不建立另一套索引。`rent-cert.muchengtech.com` 仍應在 Cloudflare 設定單跳 301，並保留原 path 與 query。
+
+`robots.txt` 只是對善意爬蟲的指示，**不是安全或權限控制**。不得將 credential、個資或其他機密資料放進 `public/`、再依賴 `Disallow` 隱藏。
+
 ### 站內問題回報設定
 
 站內表單與 GitHub Issues 會同時保留；前者方便非開發背景的使用者，後者仍是公開追蹤與開發協作管道。部署設定分成三類：

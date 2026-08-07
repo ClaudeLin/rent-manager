@@ -462,13 +462,25 @@ test('網站固定由根目錄提供入口與靜態資源', async ({ page, reque
   expect(resourcePaths.every((path) => path.startsWith('/'))).toBe(true)
 })
 
-test('完整 build 產出的 Service Worker precache 包含共用題目註記與兩種 PWA manifest', async ({ request }) => {
+test('完整 build 的 Service Worker precache 包含離線資源但排除 legacy redirect 文件', async ({ request }) => {
   const serviceWorkerPath = resolve(process.cwd(), 'dist/sw.js')
   expect(existsSync(serviceWorkerPath)).toBe(true)
   const serviceWorker = readFileSync(serviceWorkerPath, 'utf8')
   expect(serviceWorker).toContain('question_annotations.json')
   expect(serviceWorker).toContain('manifest-init.webmanifest')
   expect(serviceWorker).toContain('manifest-renew.webmanifest')
+  for (const legacyDocument of [
+    'practice/index.html',
+    'practice/chapter/index.html',
+    'mock/index.html',
+    'wrong/index.html',
+  ]) {
+    expect(serviceWorker).not.toContain(`url:${JSON.stringify(legacyDocument)}`)
+  }
+  const networkOnlyIndex = serviceWorker.indexOf('NetworkOnly')
+  const networkFirstIndex = serviceWorker.indexOf('NetworkFirst')
+  expect(networkOnlyIndex).toBeGreaterThan(-1)
+  expect(networkFirstIndex).toBeGreaterThan(networkOnlyIndex)
 
   const response = await request.get('/sw.js')
   expect(response.ok()).toBe(true)

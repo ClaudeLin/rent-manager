@@ -45,8 +45,45 @@ test('Wrangler 版本化 Worker 入口與 API routing，且不重新加入 Rate 
   const config = JSON.parse(await readFile(new URL('../wrangler.jsonc', import.meta.url), 'utf8'));
   assert.equal(config.main, './src/worker.mjs');
   assert.equal(config.assets.binding, 'ASSETS');
-  assert.deepEqual(config.assets.run_worker_first, ['/api/*']);
+  assert.deepEqual(config.assets.run_worker_first, [
+    '/api/*',
+    '/practice',
+    '/practice/',
+    '/practice/chapter',
+    '/practice/chapter/',
+    '/mock',
+    '/mock/',
+    '/wrong',
+    '/wrong/',
+  ]);
+  assert.equal(config.assets.not_found_handling, '404-page');
   assert.equal(config.ratelimits, undefined);
+});
+
+test('舊版練習路由的 GET 與 HEAD 都回永久 redirect 並保留 query，不交給 static assets', async () => {
+  const cases = [
+    ['/practice', '/init/practice/'],
+    ['/practice/', '/init/practice/'],
+    ['/practice/chapter', '/init/practice/chapter/'],
+    ['/practice/chapter/', '/init/practice/chapter/'],
+    ['/mock', '/init/mock/'],
+    ['/mock/', '/init/mock/'],
+    ['/wrong', '/init/wrong/'],
+    ['/wrong/', '/init/wrong/'],
+  ];
+  for (const method of ['GET', 'HEAD']) {
+    for (const [path, target] of cases) {
+      let assetFetches = 0;
+      const response = await handleRequest(
+        new Request(`${origin}${path}?from=legacy`, { method }),
+        environment({ ASSETS: { fetch: async () => { assetFetches += 1; return new Response('asset'); } } }),
+      );
+      assert.equal(response.status, 301, `${method} ${path}`);
+      assert.equal(response.headers.get('location'), `${origin}${target}?from=legacy`, `${method} ${path}`);
+      assert.equal(response.headers.get('cache-control'), 'public, max-age=86400', `${method} ${path}`);
+      assert.equal(assetFetches, 0, `${method} ${path}`);
+    }
+  }
 });
 
 test('合法回報從 REPORT_MAIL 與 FORM_SENDER 讀取收寄件者，回報者 Email 只作 Reply-To', async () => {

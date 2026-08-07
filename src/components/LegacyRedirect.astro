@@ -1,0 +1,27 @@
+---
+interface Props {
+  target: string
+  label: string
+}
+
+const { target, label } = Astro.props
+const canonical = new URL(target, Astro.site)
+const title = `${label}已移動｜租賃住宅管理人員題庫練習`
+---
+<!doctype html>
+<html lang="zh-Hant-TW">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="robots" content="noindex,follow" />
+    <link rel="canonical" href={canonical} />
+    <meta http-equiv="refresh" content={`2;url=${target}`} />
+    <title>{title}</title>
+  </head>
+  <body>
+    <main>
+      <h1>{label}頁面已移動</h1>
+      <p>若瀏覽器沒有自動前往新網址，請使用<a href={target}>新的練習頁面</a>。</p>
+    </main>
+  </body>
+</html>
