@@ -207,6 +207,8 @@ Converter 會 fail closed 驗證：
 
 [GitHub Issues](https://github.com/MuChengTechnology/rent-manager/issues/new) 仍會永久保留，方便公開追蹤與開發協作。兩種管道都請勿提供密碼、證件、付款資料或其他敏感個資。
 
+安全漏洞、疑似憑證或濫用方式請勿提交至公開 Issue；請依 [Security Policy](.github/SECURITY.md) 使用私人通報管道。
+
 ## 授權
 
 本專案原創程式碼採用 [MIT License](LICENSE) 授權。官方題庫、法源與其他第三方內容的權利仍歸原發布單位或權利人所有，不因本專案的 MIT License 而改變。
