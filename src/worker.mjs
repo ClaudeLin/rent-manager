@@ -19,6 +19,16 @@ const ATTACHMENT_TYPES = {
 };
 const MAX_ATTACHMENT_BYTES = 1_048_576;
 const MAX_PAYLOAD_BYTES = 1_500_000;
+const LEGACY_REDIRECTS = new Map([
+  ['/practice', '/init/practice/'],
+  ['/practice/', '/init/practice/'],
+  ['/practice/chapter', '/init/practice/chapter/'],
+  ['/practice/chapter/', '/init/practice/chapter/'],
+  ['/mock', '/init/mock/'],
+  ['/mock/', '/init/mock/'],
+  ['/wrong', '/init/wrong/'],
+  ['/wrong/', '/init/wrong/'],
+]);
 
 const json = (body, status = 200) => new Response(JSON.stringify(body), { status, headers: JSON_HEADERS });
 const clean = (value) => typeof value === 'string' ? value.trim().replaceAll('\0', '') : '';
@@ -163,6 +173,16 @@ async function verifyTurnstile(token, request, turnstileSecret, hostname, fetchI
 
 export async function handleRequest(request, env, services = { fetch }) {
   const url = new URL(request.url);
+  const legacyTarget = LEGACY_REDIRECTS.get(url.pathname);
+  if (legacyTarget) {
+    return new Response(null, {
+      status: 301,
+      headers: {
+        location: `${url.origin}${legacyTarget}${url.search}`,
+        'cache-control': 'public, max-age=86400',
+      },
+    });
+  }
   if (url.pathname !== '/api/forms/issue-report') return env.ASSETS.fetch(request);
   if (request.method !== 'POST') return json({ ok: false, error: 'method_not_allowed' }, 405);
 

@@ -1,0 +1,5 @@
+User-agent: *
+Allow: /
+Disallow: /api/
+Disallow: /data/
+Sitemap: https://cert.muchengtech.com/sitemap.xml

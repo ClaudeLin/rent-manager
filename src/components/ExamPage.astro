@@ -2,12 +2,16 @@
 import '../styles/app.css'
 import OfflineNotice from './OfflineNotice.astro'
 import ReportDialog from './ReportDialog.astro'
+import SeoMeta from './SeoMeta.astro'
 import SiteFooter from './SiteFooter.astro'
 import { getExamProfile, routesForProfile } from '../lib/exam-profiles'
 const { track, view = 'practice' } = Astro.props
 const profile = getExamProfile(track)
 const routes = routesForProfile(profile)
 const canonicalPath = ({ practice: routes.practice, chapter: routes.chapter, mock: routes.mock, wrong: routes.wrong } as Record<string, string>)[view] ?? routes.practice
-const canonical = new URL(canonicalPath, Astro.site)
+const viewLabels = { practice: '全題練習', chapter: '章節練習', mock: '模擬考', wrong: '錯題回顧' } as const
+const viewLabel = viewLabels[view as keyof typeof viewLabels] ?? viewLabels.practice
+const title = `${profile.label}${viewLabel}｜租賃住宅管理人員題庫練習`
+const description = `租賃住宅管理人員${profile.label}題庫的${viewLabel}頁面；作答狀態只保存在目前瀏覽器。`
 ---
-<!doctype html><html lang="zh-Hant-TW"><head><meta charset="UTF-8" /><meta name="viewport" content="width=device-width, initial-scale=1" /><meta name="theme-color" content={profile.theme.color} /><link rel="icon" type="image/svg+xml" href="/favicon.svg" /><link rel="canonical" href={canonical} /><link rel="manifest" href={profile.theme.manifestPath} /><title>租賃住宅管理人員題庫</title></head><body data-track={track}><main id="app" data-track={track} data-view={view} aria-live="polite"></main><SiteFooter /><ReportDialog /><OfflineNotice /><script>import { bootstrapExamPage } from '../lib/bootstrap'; const root = document.querySelector<HTMLElement>('#app')!; void bootstrapExamPage(root, root.dataset.track as 'init' | 'renew', root.dataset.view as 'practice' | 'chapter' | 'mock' | 'wrong')</script></body></html>
+<!doctype html><html lang="zh-Hant-TW"><head><meta charset="UTF-8" /><meta name="viewport" content="width=device-width, initial-scale=1" /><meta name="theme-color" content={profile.theme.color} /><SeoMeta title={title} description={description} canonicalPath={canonicalPath} indexable={false} /><link rel="icon" type="image/svg+xml" href="/favicon.svg" /><link rel="manifest" href={profile.theme.manifestPath} /></head><body data-track={track}><main id="app" data-track={track} data-view={view} aria-live="polite"></main><SiteFooter /><ReportDialog /><OfflineNotice /><script>import { bootstrapExamPage } from '../lib/bootstrap'; const root = document.querySelector<HTMLElement>('#app')!; void bootstrapExamPage(root, root.dataset.track as 'init' | 'renew', root.dataset.view as 'practice' | 'chapter' | 'mock' | 'wrong')</script></body></html>

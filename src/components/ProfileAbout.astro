@@ -2,10 +2,12 @@
 import '../styles/app.css'
 import OfflineNotice from './OfflineNotice.astro'
 import ReportDialog from './ReportDialog.astro'
+import SeoMeta from './SeoMeta.astro'
 import SiteFooter from './SiteFooter.astro'
 import { examProfiles } from '../lib/exam-profiles'
 import { renderSharedHeader } from '../lib/navigation'
-const canonical = new URL('/about/', Astro.site)
+const title = '關於本站｜租賃住宅管理人員題庫練習'
+const description = '租賃住宅管理人員初訓與換證題庫的資料來源、使用說明、問題回報與免責聲明。'
 ---
 <!doctype html>
 <html lang="zh-Hant-TW">
@@ -13,11 +15,10 @@ const canonical = new URL('/about/', Astro.site)
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="theme-color" content="#143b63" />
-    <meta name="description" content="租賃住宅管理人員初訓與換證題庫的資料來源、使用說明、問題回報與免責聲明。" />
+    <SeoMeta title={title} description={description} canonicalPath="/about/" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <link rel="manifest" href="/manifest.webmanifest" />
-    <link rel="canonical" href={canonical} />
-    <title>關於本站｜租賃住宅管理人員題庫</title>
+
   </head>
   <body>
     <Fragment set:html={renderSharedHeader()} />
